@@ -1,0 +1,96 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model Siswa {
+  id            Int             @id @default(autoincrement())
+  nama          String
+  nis           String
+  idKelas       Int
+  uidRFID       String          @unique
+  PresensiSiswa PresensiSiswa[]
+  SiswaKelas    SiswaKelas[]
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+}
+
+model TahunPelajaran {
+  id    Int     @id @default(autoincrement())
+  nama  String
+  Kelas Kelas[]
+}
+
+model Jurusan {
+  id    Int     @id @default(autoincrement())
+  nama  String
+  Kelas Kelas[]
+}
+
+model Tingkat {
+  id    Int     @id @default(autoincrement())
+  nama  String
+  Kelas Kelas[]
+}
+
+model Kelas {
+  id               Int            @id @default(autoincrement())
+  nama             String
+  idTahunPelajaran Int
+  idJurusan        Int
+  idTingkat        Int
+  idRuangKelas     Int
+  Tingkat          Tingkat        @relation(fields: [idTingkat], references: [id])
+  Jurusan          Jurusan        @relation(fields: [idJurusan], references: [id])
+  TahunPelajaran   TahunPelajaran @relation(fields: [idTahunPelajaran], references: [id])
+  RuangKelas       RuangKelas     @relation(fields: [idRuangKelas], references: [id])
+  SiswaKelas       SiswaKelas[]
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+
+  @@unique([idTahunPelajaran, idRuangKelas])
+}
+
+model SiswaKelas {
+  id      Int   @id @default(autoincrement())
+  idKelas Int
+  idSiswa Int
+  Siswa   Siswa @relation(fields: [idSiswa], references: [id])
+  Kelas   Kelas @relation(fields: [idKelas], references: [id])
+}
+
+model RuangKelas {
+  id    Int     @id @default(autoincrement())
+  nama  String
+  Kelas Kelas[]
+}
+
+model Presensi {
+  id            Int             @id @default(autoincrement())
+  idKelas       Int
+  Date          DateTime        @db.Date
+  PresensiSiswa PresensiSiswa[]
+}
+
+model PresensiSiswa {
+  id           Int      @id @default(autoincrement())
+  idPresensi   Int
+  idSiswa      Int
+  datePresence DateTime
+  Siswa        Siswa    @relation(fields: [idSiswa], references: [id])
+  Presensi     Presensi @relation(fields: [idPresensi], references: [id])
+}
+
+model UnitPresensi {
+  id        Int      @id @default(autoincrement())
+  nama      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
