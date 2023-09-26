@@ -10,87 +10,142 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-model Siswa {
-  id            Int             @id @default(autoincrement())
-  nama          String
-  nis           String
-  idKelas       Int
-  uidRFID       String          @unique
-  PresensiSiswa PresensiSiswa[]
-  SiswaKelas    SiswaKelas[]
-  createdAt     DateTime        @default(now())
-  updatedAt     DateTime        @updatedAt
-}
+model User {
+  id       Int    @id @default(autoincrement())
+  email    String @unique
+  username String @unique
+  password String
+  role     String
 
-model TahunPelajaran {
-  id    Int     @id @default(autoincrement())
-  nama  String
-  Kelas Kelas[]
-}
-
-model Jurusan {
-  id    Int     @id @default(autoincrement())
-  nama  String
-  Kelas Kelas[]
-}
-
-model Tingkat {
-  id    Int     @id @default(autoincrement())
-  nama  String
-  Kelas Kelas[]
-}
-
-model Kelas {
-  id               Int            @id @default(autoincrement())
-  nama             String
-  idTahunPelajaran Int
-  idJurusan        Int
-  idTingkat        Int
-  idRuangKelas     Int
-  Tingkat          Tingkat        @relation(fields: [idTingkat], references: [id])
-  Jurusan          Jurusan        @relation(fields: [idJurusan], references: [id])
-  TahunPelajaran   TahunPelajaran @relation(fields: [idTahunPelajaran], references: [id])
-  RuangKelas       RuangKelas     @relation(fields: [idRuangKelas], references: [id])
-  SiswaKelas       SiswaKelas[]
-  createdAt        DateTime       @default(now())
-  updatedAt        DateTime       @updatedAt
-
-  @@unique([idTahunPelajaran, idRuangKelas])
-}
-
-model SiswaKelas {
-  id      Int   @id @default(autoincrement())
-  idKelas Int
-  idSiswa Int
-  Siswa   Siswa @relation(fields: [idSiswa], references: [id])
-  Kelas   Kelas @relation(fields: [idKelas], references: [id])
-}
-
-model RuangKelas {
-  id    Int     @id @default(autoincrement())
-  nama  String
-  Kelas Kelas[]
-}
-
-model Presensi {
-  id            Int             @id @default(autoincrement())
-  idKelas       Int
-  Date          DateTime        @db.Date
-  PresensiSiswa PresensiSiswa[]
-}
-
-model PresensiSiswa {
-  id           Int      @id @default(autoincrement())
-  idPresensi   Int
-  idSiswa      Int
-  datePresence DateTime
-  Siswa        Siswa    @relation(fields: [idSiswa], references: [id])
-  Presensi     Presensi @relation(fields: [idPresensi], references: [id])
-}
-
-model UnitPresensi {
-  id        Int      @id @default(autoincrement())
-  nama      String
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+model Student {
+  id          Int     @id @default(autoincrement())
+  name        String
+  nis         String
+  rfid        String? @unique
+  isGraduated Boolean @default(false)
+
+  AttendanceStudent   AttendanceStudent[]
+  ClassStudent        ClassStudent[]
+  AcademicYearStudent AcademicYearStudent[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model AcademicYear {
+  id       Int     @id @default(autoincrement())
+  year     String
+  semester String
+  isActive Boolean @default(false)
+
+  Class               Class[]
+  AcademicYearStudent AcademicYearStudent[]
+  Attendance          Attendance[]
+
+  @@unique([year, semester])
+}
+
+model Major {
+  id   Int    @id @default(autoincrement())
+  name String
+
+  Class Class[]
+}
+
+model Year {
+  id   Int    @id @default(autoincrement())
+  name String
+
+  Class Class[]
+}
+
+model Class {
+  id               Int    @id @default(autoincrement())
+  name             String
+  academicYearId   Int
+  majorId          Int
+  yearId           Int
+  // idRuangKelas   Int?
+  attendanceUnitId Int?
+
+  Year           Year            @relation(fields: [yearId], references: [id])
+  Major          Major           @relation(fields: [majorId], references: [id])
+  AcademicYear   AcademicYear    @relation(fields: [academicYearId], references: [id])
+  // RuangKelas     RuangKelas?    @relation(fields: [idRuangKelas], references: [id])
+  AttendanceUnit AttendanceUnit? @relation(fields: [attendanceUnitId], references: [id])
+  ClassStudent   ClassStudent[]
+  Attendance     Attendance[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // @@unique([academicYearId, idRuangKelas])
+  @@unique([academicYearId, majorId, yearId, name])
+}
+
+model ClassStudent {
+  classId   Int
+  studentId Int
+
+  Student Student @relation(fields: [studentId], references: [id])
+  Class   Class   @relation(fields: [classId], references: [id])
+
+  @@id([classId, studentId], name: "id")
+}
+
+// model RuangKelas {
+//   id    Int     @id @default(autoincrement())
+//   nama  String
+//   Class Class[]
+// }
+
+model Attendance {
+  id             Int      @id @default(autoincrement())
+  classId        Int
+  date           DateTime @db.Date
+  academicYearId Int
+
+  AcademicYear      AcademicYear        @relation(fields: [academicYearId], references: [id])
+  AttendanceStudent AttendanceStudent[]
+  Class             Class               @relation(fields: [classId], references: [id])
+
+  @@unique([classId, date])
+}
+
+model AttendanceStudent {
+  id           Int       @id @default(autoincrement())
+  attendanceId Int
+  studentId    Int
+  datePresence DateTime?
+  status       String    @default("Alpa")
+
+  Attendance Attendance @relation(fields: [attendanceId], references: [id])
+  Student    Student    @relation(fields: [studentId], references: [id])
+
+  @@unique([attendanceId, studentId], name: "presensi_siswa")
+}
+
+model AttendanceUnit {
+  id         Int    @id @default(autoincrement())
+  name       String
+  identifier String @unique
+
+  Class Class[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model AcademicYearStudent {
+  studentId      Int
+  academicYearId Int
+
+  AcademicYear AcademicYear @relation(fields: [academicYearId], references: [id])
+  Student      Student      @relation(fields: [studentId], references: [id])
+
+  @@id([studentId, academicYearId])
 }

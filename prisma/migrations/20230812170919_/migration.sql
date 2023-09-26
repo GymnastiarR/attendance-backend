@@ -1,0 +1,2 @@
+-- AlterTable
+ALTER TABLE `siswa` MODIFY `uidRFID` VARCHAR(191) NULL;
