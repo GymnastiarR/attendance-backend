@@ -7,10 +7,6 @@ import task from './cron.js';
 //     res.status( 200 ).json( { message: "Hello World" } );
 // } );
 
-app.get('/', (req, res) => {
-    res.status(200).json({ status: "OK" });
-});
-
 env.config();
 
 app.listen( process.env.PORT, () => {
