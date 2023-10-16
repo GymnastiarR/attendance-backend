@@ -1,4 +1,5 @@
 import { PrismaClient } from "@prisma/client";
+import ExcelJs from "exceljs";
 import { query } from "express";
 
 const prisma = new PrismaClient();
@@ -46,12 +47,141 @@ export const getSiswa = async ( req, res, next ) => {
     try {
         const { id } = req.params;
 
+        const { id: academicYear } = await prisma.academicYear.findFirst( {
+            where: {
+                isActive: true
+            }
+        } );
+
+        const student = await prisma.student.findUnique( {
+            where: {
+                id: parseInt( id )
+            },
+
+            include: {
+                AttendanceStudent: {
+                    select: {
+                        status: true,
+                        datePresence: true,
+                        Attendance: {
+                            select: {
+                                date: true
+                            }
+                        }
+                    }
+                },
+                ClassStudent: {
+                    where: {
+                        Class: {
+                            academicYearId: academicYear
+                        }
+                    },
+                    select: {
+                        Class: {
+                            select: {
+                                name: true,
+                                Major: {
+                                    select: {
+                                        name: true
+                                    }
+                                },
+                                Year: {
+                                    select: {
+                                        name: true
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        } );
+
+        res.status( 200 ).json( { data: student } );
+    } catch ( error ) {
+        next( error );
+    }
+};
+
+export const downloadPresence = async ( req, res, next ) => {
+    try {
+        const workbook = new ExcelJs.Workbook();
+
+        const worksheet = workbook.addWorksheet( 'Presensi' );
+
+        worksheet.properties.defaultRowHeight = 25;
+
+        const { id } = req.params;
+
+        const { id: academicYear } = await prisma.academicYear.findFirst( {
+            where: {
+                isActive: true
+            }
+        } );
+
+        const presences = await prisma.attendanceStudent.findMany( {
+            where: {
+                studentId: parseInt( id ),
+                Attendance: {
+                    academicYearId: academicYear
+                }
+            },
+            include: {
+                Attendance: true
+            },
+            orderBy: {
+                Attendance: {
+                    date: 'asc'
+                }
+            }
+        } );
+
+        const data = presences.map( ( item, index ) => {
+            return [ index + 1, new Date( item.Attendance.date ).toLocaleDateString( 'id-ID', { weekday: "long", day: "2-digit", month: "long", year: "numeric" } ), item.status ];
+        } );
+
         const student = await prisma.student.findUnique( {
             where: {
                 id: parseInt( id )
             }
         } );
-        res.status( 200 ).json( { data: student } );
+
+        worksheet.addTable( {
+            name: 'MyTable',
+            ref: 'A3',
+            headerRow: true,
+            style: {
+                theme: 'TableStyleMedium6',
+                showRowStripes: true,
+            },
+            columns: [
+                { name: 'No', filterButton: true },
+                { name: 'Tanggal', filterButton: false },
+                { name: 'Status', filterButton: false },
+            ],
+            rows: data,
+            displayName: 'Presensi',
+        } );
+
+        worksheet.mergeCells( 'A1:C1' );
+        worksheet.getCell( 'A1' ).value = `Presensi : ${student.name}`;
+        worksheet.getCell( 'A1' ).font = { bold: true };
+        worksheet.getCell( 'A1' ).alignment = { horizontal: 'center' };
+        // worksheet.getRow( '1' ).height = 40;
+
+        worksheet.getColumn( 1 ).alignment = { horizontal: 'center' };
+        worksheet.getColumn( 2 ).width = 50;
+        worksheet.getColumn( 3 ).width = 30;
+
+        const buffer = await workbook.xlsx.writeBuffer();
+
+        res.set( {
+            'Content-Type': 'application/octet-stream',
+            'Content-Disposition': `attachment; filename="Presensi :    ${student.name}.xlsx"`,
+            'Content-Length': buffer.length,
+        } );
+
+        res.send( buffer );
     } catch ( error ) {
         next( error );
     }
@@ -230,4 +360,12 @@ const getSiswaTanpaKelas = function ( academicYearId, query ) {
             ]
         },
     } );
+};
+
+export const show = ( req, res ) => {
+    try {
+
+    } catch ( error ) {
+        next( error );
+    }
 };

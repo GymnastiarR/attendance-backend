@@ -1,6 +1,7 @@
 import { PrismaClient } from "@prisma/client";
 import moment from "moment";
 import XLSX from "xlsx";
+import ExcelJs from "exceljs";
 import { PassThrough } from 'stream';
 import path from "path";
 import fs from "fs";
@@ -16,6 +17,15 @@ export const store = async ( req, res, next ) => {
                 isActive: true
             }
         } );
+
+        let date = req.body.date;
+
+        if ( !date ) {
+            date = new Date();
+        }
+        else {
+            date = new Date( date );
+        }
 
         const classes = await prisma.class.findMany( {
             where: {
@@ -39,7 +49,7 @@ export const store = async ( req, res, next ) => {
             await prisma.attendance.create( {
                 data: {
                     classId: clas.id,
-                    date: new Date(),
+                    date: date,
                     academicYearId: academicYearId,
                     AttendanceStudent: {
                         createMany: {
@@ -78,6 +88,7 @@ export const index = async ( req, res, next ) => {
         } );
 
         res.status( 200 ).json( { data: attendance } );
+
     } catch ( error ) {
         next( error );
     }
@@ -217,7 +228,113 @@ export const updateAttendance = async ( req, res, next ) => {
                 }
             }
         } );
+
         res.status( 200 ).json( { message: "Berhasil", data: attendance } );
+    } catch ( error ) {
+        next( error );
+    }
+};
+
+export const downloadPresence = async ( req, res, next ) => {
+    try {
+        const { dateStart } = req.query;
+
+        const workbook = new ExcelJs.Workbook();
+
+        const data = await prisma.class.findMany( {
+            select: {
+                name: true,
+                Major: {
+                    select: {
+                        name: true
+                    }
+                },
+                Year: {
+                    select: {
+                        name: true
+                    }
+                },
+                Attendance: {
+                    where: {
+                        date: dateStart
+                    },
+                    select: {
+                        AttendanceStudent: {
+                            select: {
+                                Student: {
+                                    select: {
+                                        name: true
+                                    }
+                                },
+                                status: true,
+
+                            }
+                        }
+                    }
+                }
+            }
+        } );
+
+        data.forEach( ( clss, index ) => {
+            const worksheet = workbook.addWorksheet( `${clss.Year.name} ${clss.Major.name} ${clss.name}` );
+
+            worksheet.properties.defaultRowHeight = 26;
+
+            worksheet.columns = [
+                { header: 'No', key: 'no', width: 10 },
+                { header: 'Nama', key: 'nama', width: 32 },
+                { header: 'Status', key: 'status', width: 10 },
+            ];
+
+            worksheet.getRow( 1 ).font = { bold: true };
+
+            // worksheet.getRow( 1 ).eachCell( { includeEmpty: false }, ( cell, colNumber ) => {
+            //     cell.fill = {
+            //         type: 'pattern',
+            //         pattern: 'solid',
+            //         fgColor: { argb: 'FFFF00' }, // Yellow color
+            //     };
+            // } );
+
+            worksheet.getCell( 'A1' ).border = {
+                bottom: "thin",
+                top: "thin",
+                left: "thin",
+                right: "thin",
+            };
+
+            worksheet.eachRow( { includeEmpty: false }, ( row, rowNumber ) => {
+                row.eachCell( { includeEmpty: false }, ( cell, colNumber ) => {
+                    cell.border = {
+                        bottom: "thin",
+                        top: "thin",
+                        left: "thin",
+                        right: "thin",
+                    };
+                } );
+            } );
+
+            if ( clss.Attendance.length == 0 || clss.Attendance[ 0 ].AttendanceStudent.length == 0 ) {
+                return;
+            };
+            const studentAndPresence = clss.Attendance[ 0 ].AttendanceStudent.map( ( item, index ) => {
+                return [ index + 1, item.Student.name, item.status ];
+            } );
+
+            worksheet.addRows( studentAndPresence );
+
+        } );
+
+        const buffer = await workbook.xlsx.writeBuffer();
+
+        res.set( {
+            'Content-Type': 'application/octet-stream',
+            'Content-Disposition': `attachment; filename="${new Date( dateStart ).toLocaleDateString()}.xlsx"`,
+            'Content-Length': buffer.length,
+        } );
+
+        res.send( buffer );
+        // res.status( 200 ).json( { data: data } );
     } catch ( error ) {
         next( error );
     }
