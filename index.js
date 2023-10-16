@@ -1,11 +1,19 @@
-import app from './server.js';
-import env from 'dotenv';
-import server from './server.js';
-import task from './cron.js';
-// app.get( '/rfid/:id/assign', ( req, res, next ) => {
-//     io.emit( 'RFID', req.params.id );
-//     res.status( 200 ).json( { message: "Hello World" } );
-// } );
+// import app from './server.js';
+// import env from 'dotenv';
+// import server from './server.js';
+// import task from './cron.js';
+// // app.get( '/rfid/:id/assign', ( req, res, next ) => {
+// //     io.emit( 'RFID', req.params.id );
+// //     res.status( 200 ).json( { message: "Hello World" } );
+// // } );
+
+import express from "express";
+
+const server = new express();
+
+server.get( "/", ( req, res ) => {
+    res.status( 200 ).json( { message: "Hello World" } );
+} );
 
 env.config();
 server.listen( process.env.PORT, () => {
