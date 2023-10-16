@@ -30,5 +30,5 @@ jobs:
             export NVM_DIR=~/.nvm
             source ~/.nvm/nvm.sh                
             npm install
-            sudo prisma migrate deploy
+            npx prisma migrate deploy
             pm2 restart ecosystem.config.cjs --env production
