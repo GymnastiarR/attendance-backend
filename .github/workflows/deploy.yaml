@@ -16,16 +16,5 @@ jobs:
 
     # Steps represent a sequence of tasks that will be executed as part of the job
     steps:
-      - name: Deploy using ssh
-        uses: appleboy/ssh-action@master
-        with:
-          host: ${{ secrets.HOST }}
-          username: ${{ secrets.USERNAME }}
-          key: ${{ secrets.PRIVATE_KEY }}
-          port: 22
-          script: |
-            cd ~/home/gymnas/apps/brickbox
-            git pull origin master
-            git status
-            npm install --only=prod
-            pm2 restart ecosystem.config.cjs --env production
+      - name: Print Secret
+        run: echo ${{ secrets.SECRET_NAME }}
