@@ -24,5 +24,8 @@ jobs:
           key: ${{ secrets.PRIVATE_KEY }}
           port: 22
           script: |
-            cd ~/apps/brickbox
+            cd ~/apps/brickbox/attendance-backend
             git pull origin master
+            git status
+            npm install --only=prod
+            pm2 restart ecosystem.config.cjs --env production
