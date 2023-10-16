@@ -27,4 +27,4 @@ jobs:
             cd ~/apps/brickbox/attendance-backend
             git pull origin master
             git status
-            sudo ./.scripts/deploy.sh
+            npm install
