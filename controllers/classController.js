@@ -166,13 +166,13 @@ export const getSiswaKelas = async ( req, res, next ) => {
     }
 };
 
-export const getPresensiKelas = async ( req, res, next ) => {
+export const getPresence = async ( req, res, next ) => {
     try {
-        const { id: classId } = req.params;
+        const { classId } = req.params;
 
         const presensi = await prisma.attendance.findMany( {
             where: {
-                classId
+                classId: parseInt( classId )
             }
         } );
 
@@ -243,13 +243,6 @@ export const removeStudent = async ( req, res, next ) => {
         } );
 
         res.status( 200 ).json( { status: "Berhasil" } );
-    } catch ( error ) {
-        next( error );
-    }
-};
-
-export const swicthSiswa = async ( req, res, next ) => {
-    try {
     } catch ( error ) {
         next( error );
     }
