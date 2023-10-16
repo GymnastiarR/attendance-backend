@@ -4,11 +4,12 @@ module.exports = {
         script: "./index.js",
         args: "limit",
         env: {
-            PORT: 5000,
+            PORT: 3000,
             NODE_ENV: "development",
+            DATABASE_URL: "mysql://root:Gymnas.291102@localhost:3306/AttendanceSystemInformation?schema=public"
         },
         env_production: {
-            PORT: 8000,
+            PORT: 3000,
             NODE_ENV: "production",
             DATABASE_URL: "mysql://root:Gymnas.291102@localhost:3306/AttendanceSystemInformation?schema=public"
         }
