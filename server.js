@@ -10,6 +10,9 @@ Socket.getSocket( server );
 
 app.use( express.json() );
 app.use( cors() );
+app.get( '/', ( req, res ) => {
+    res.status( 200 ).json( { message: 'Hello World' } );
+} );
 app.use( '/api', router() );
 // app.use( express.static( __dirname + '/public' ) );
 
