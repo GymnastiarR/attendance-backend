@@ -2,7 +2,7 @@ import joi from 'joi';
 import CustomError from '../../custom/CustomError.js';
 
 const schema = joi.object( {
-    name: joi.string().required().label( 'Nama' ),
+    name: joi.number().required().label( 'Nama' ),
 } );
 
 const validate = ( req, res, next ) => {

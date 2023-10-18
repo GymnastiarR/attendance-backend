@@ -1,4 +1,5 @@
 import joi from 'joi';
+import CustomError from '../../custom/CustomError.js';
 
 const schema = joi.object( {
     name: joi.string().required().label( 'Nama' ),
@@ -14,12 +15,10 @@ const options = {
 const validate = ( req, res, next ) => {
     try {
         const { error } = schema.validate( req.body, options );
-        if ( error ) {
-            return res.status( 400 ).json( { status: "Gagal", message: error.details } );
-        }
+        if ( error ) throw new CustomError( JSON.stringify( error.details ), 400 );
         next();
     } catch ( error ) {
-        console.log( error );
+        next( error );
     }
 };
 

@@ -16,13 +16,16 @@ export const index = async ( req, res, next ) => {
 export const store = async ( req, res, next ) => {
     try {
         const { name } = req.body;
+
         const major = await prisma.major.create( {
             data: {
                 name
             }
         } );
+
         res.status( 200 ).json( { status: "Berhasil Menambah Jurusan", data: major } );
     } catch ( error ) {
+        console.log( error );
         next( error );
     }
 };

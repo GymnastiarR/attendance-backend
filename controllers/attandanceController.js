@@ -64,7 +64,6 @@ export const store = async ( req, res, next ) => {
 
         res.status( 200 ).json( { status: "Berhasil Menambah Presensi" } );
     } catch ( error ) {
-        console.log( error );
         next( error );
     }
 };
