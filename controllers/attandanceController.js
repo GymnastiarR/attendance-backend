@@ -139,16 +139,7 @@ export const updateAttendance = async ( req, res, next ) => {
             },
             select: {
                 id: true,
-                ClassStudent: {
-                    where: {
-                        Class: {
-                            academicYearId: academicYearId
-                        }
-                    },
-                    select: {
-                        classId: true,
-                    }
-                }
+                classId: true,
             }
         } );
 
@@ -170,18 +161,18 @@ export const updateAttendance = async ( req, res, next ) => {
             }
         } );
 
-        const isMatch = classes.find( ( clss ) => clss.id === student.ClassStudent[ 0 ].classId );
+        const isMatch = classes.find( ( clss ) => clss.id === student.classId );
+
         if ( !isMatch ) throw new Error( "Unit Presensi Tidak Sesuai" );
 
-        const { token } = req.query;
-        if ( !token ) throw new Error( "Token Tidak Ditemukan" );
+        // const { token } = req.query;
+        // if ( !token ) throw new Error( "Token Tidak Ditemukan" );
+
+        console.log( moment().format() );
 
         const attendance = await prisma.attendance.update( {
             where: {
-                classId_date: {
-                    classId: student.ClassStudent[ 0 ].classId,
-                    date: `${moment().format( "YYYY-MM-DD" )}T00:00:00.000Z`
-                }
+                date: `${moment().format( "YYYY-MM-DD" )}T00:00:00.000Z`
             },
             data: {
                 AttendanceStudent: {
@@ -191,7 +182,7 @@ export const updateAttendance = async ( req, res, next ) => {
                         },
                         data: {
                             status: "Hadir",
-                            datePresence: new Date()
+                            datePresence: moment().format()
                         }
                     }
                 }
@@ -210,8 +201,9 @@ export const downloadPresence = async ( req, res, next ) => {
 
         const workbook = new ExcelJs.Workbook();
 
-        const data = await prisma.class.findMany( {
+        const classes = await prisma.class.findMany( {
             select: {
+                id: true,
                 name: true,
                 Major: {
                     select: {
@@ -222,48 +214,32 @@ export const downloadPresence = async ( req, res, next ) => {
                     select: {
                         name: true
                     }
-                },
-                Attendance: {
-                    where: {
-                        date: dateStart
-                    },
-                    select: {
-                        AttendanceStudent: {
-                            select: {
-                                Student: {
-                                    select: {
-                                        name: true
-                                    }
-                                },
-                                status: true,
-
-                            }
-                        }
-                    }
                 }
             }
         } );
 
-        data.forEach( ( clss, index ) => {
+        for await ( const clss of classes ) {
             const worksheet = workbook.addWorksheet( `${clss.Year.name} ${clss.Major.name} ${clss.name}` );
 
             worksheet.properties.defaultRowHeight = 26;
 
             worksheet.columns = [
-                { header: 'No', key: 'no', width: 10 },
+                { header: 'No', key: 'no', width: 10, },
                 { header: 'Nama', key: 'nama', width: 32 },
                 { header: 'Status', key: 'status', width: 10 },
             ];
 
             worksheet.getRow( 1 ).font = { bold: true };
 
-            // worksheet.getRow( 1 ).eachCell( { includeEmpty: false }, ( cell, colNumber ) => {
-            //     cell.fill = {
-            //         type: 'pattern',
-            //         pattern: 'solid',
-            //         fgColor: { argb: 'FFFF00' }, // Yellow color
-            //     };
-            // } );
+            worksheet.getColumn( 'A' ).alignment = { horizontal: 'center' };
+
+            worksheet.getRow( 1 ).eachCell( { includeEmpty: false }, ( cell, colNumber ) => {
+                cell.fill = {
+                    type: 'pattern',
+                    pattern: 'solid',
+                    fgColor: { argb: 'FFFF00' }, // Yellow color
+                };
+            } );
 
             worksheet.getCell( 'A1' ).border = {
                 bottom: "thin",
@@ -272,27 +248,97 @@ export const downloadPresence = async ( req, res, next ) => {
                 right: "thin",
             };
 
-            worksheet.eachRow( { includeEmpty: false }, ( row, rowNumber ) => {
-                row.eachCell( { includeEmpty: false }, ( cell, colNumber ) => {
-                    cell.border = {
-                        bottom: "thin",
-                        top: "thin",
-                        left: "thin",
-                        right: "thin",
-                    };
-                } );
+            const data = await prisma.attendance.findUnique( {
+                where: {
+                    date: dateStart
+                },
+                select: {
+                    date: true,
+                    AttendanceStudent: {
+                        where: {
+                            Student: {
+                                classId: clss.id
+                            }
+                        },
+                        select: {
+                            Student: {
+                                select: {
+                                    name: true
+                                }
+                            },
+                            status: true
+                        }
+                    }
+                }
             } );
 
-            if ( clss.Attendance.length == 0 || clss.Attendance[ 0 ].AttendanceStudent.length == 0 ) {
-                return;
-            };
-            const studentAndPresence = clss.Attendance[ 0 ].AttendanceStudent.map( ( item, index ) => {
+            const studentAndPresence = data.AttendanceStudent.map( ( item, index ) => {
                 return [ index + 1, item.Student.name, item.status ];
             } );
 
             worksheet.addRows( studentAndPresence );
 
-        } );
+            worksheet.eachRow( { includeEmpty: false }, ( row, rowNumber ) => {
+                row.eachCell( { includeEmpty: false }, ( cell, colNumber ) => {
+                    cell.border = {
+                        bottom: { style: 'thin' },
+                        top: { style: 'thin' },
+                        left: { style: 'thin' },
+                        right: { style: 'thin' },
+                    };
+                } );
+            } );
+        }
+
+        // data.forEach( ( clss, index ) => {
+        //     const worksheet = workbook.addWorksheet( `${clss.Year.name} ${clss.Major.name} ${clss.name}` );
+
+        //     worksheet.properties.defaultRowHeight = 26;
+
+        //     worksheet.columns = [
+        //         { header: 'No', key: 'no', width: 10 },
+        //         { header: 'Nama', key: 'nama', width: 32 },
+        //         { header: 'Status', key: 'status', width: 10 },
+        //     ];
+
+        //     worksheet.getRow( 1 ).font = { bold: true };
+
+        //     // worksheet.getRow( 1 ).eachCell( { includeEmpty: false }, ( cell, colNumber ) => {
+        //     //     cell.fill = {
+        //     //         type: 'pattern',
+        //     //         pattern: 'solid',
+        //     //         fgColor: { argb: 'FFFF00' }, // Yellow color
+        //     //     };
+        //     // } );
+
+        //     worksheet.getCell( 'A1' ).border = {
+        //         bottom: "thin",
+        //         top: "thin",
+        //         left: "thin",
+        //         right: "thin",
+        //     };
+
+        //     worksheet.eachRow( { includeEmpty: false }, ( row, rowNumber ) => {
+        //         row.eachCell( { includeEmpty: false }, ( cell, colNumber ) => {
+        //             cell.border = {
+        //                 bottom: "thin",
+        //                 top: "thin",
+        //                 left: "thin",
+        //                 right: "thin",
+        //             };
+        //         } );
+        //     } );
+
+        //     if ( clss.Attendance.length == 0 || clss.Attendance[ 0 ].AttendanceStudent.length == 0 ) {
+        //         return;
+        //     };
+        //     const studentAndPresence = clss.Attendance[ 0 ].AttendanceStudent.map( ( item, index ) => {
+        //         return [ index + 1, item.Student.name, item.status ];
+        //     } );
+
+        //     worksheet.addRows( studentAndPresence );
+
+        // } );
 
         const buffer = await workbook.xlsx.writeBuffer();
 
@@ -303,7 +349,6 @@ export const downloadPresence = async ( req, res, next ) => {
         } );
 
         res.send( buffer );
-        // res.status( 200 ).json( { data: data } );
     } catch ( error ) {
         next( error );
     }

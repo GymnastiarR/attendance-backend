@@ -111,6 +111,18 @@ export const getSiswa = async ( req, res, next ) => {
             }
         } );
 
+        const counts = await prisma.attendanceStudent.groupBy( {
+            by: [ 'status' ],
+            where: {
+                studentId: parseInt( id ),
+            },
+            _count: {
+                status: true,
+            },
+        } );
+
+        student.attendance = counts;
+
         res.status( 200 ).json( { data: student } );
     } catch ( error ) {
         next( error );
