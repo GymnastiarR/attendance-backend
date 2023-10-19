@@ -168,26 +168,24 @@ export const updateAttendance = async ( req, res, next ) => {
         // const { token } = req.query;
         // if ( !token ) throw new Error( "Token Tidak Ditemukan" );
 
-        console.log( moment().format() );
-
-        const attendance = await prisma.attendance.update( {
-            where: {
-                date: `${moment().format( "YYYY-MM-DD" )}T00:00:00.000Z`
-            },
-            data: {
-                AttendanceStudent: {
-                    updateMany: {
-                        where: {
-                            studentId: student.id
-                        },
-                        data: {
-                            status: "Hadir",
-                            datePresence: moment().format()
-                        }
-                    }
-                }
-            }
-        } );
+        // const attendance = await prisma.attendance.update( {
+        //     where: {
+        //         date: `${moment().format( "YYYY-MM-DD" )}T00:00:00.000Z`
+        //     },
+        //     data: {
+        //         AttendanceStudent: {
+        //             updateMany: {
+        //                 where: {
+        //                     studentId: student.id
+        //                 },
+        //                 data: {
+        //                     status: "Hadir",
+        //                     datePresence: moment().format()
+        //                 }
+        //             }
+        //         }
+        //     }
+        // } );
 
         res.status( 200 ).json( { message: "Berhasil", data: attendance } );
     } catch ( error ) {
