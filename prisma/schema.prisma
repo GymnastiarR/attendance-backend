@@ -22,15 +22,17 @@ model User {
 }
 
 model Student {
-  id          Int     @id @default(autoincrement())
-  name        String
-  nis         String
-  rfid        String? @unique
-  isGraduated Boolean @default(false)
+  id             Int     @id @default(autoincrement())
+  name           String
+  nis            String  @unique
+  rfid           String? @unique
+  isGraduated    Boolean @default(false)
+  academicYearId Int
+  classId        Int?
 
-  AttendanceStudent   AttendanceStudent[]
-  ClassStudent        ClassStudent[]
-  AcademicYearStudent AcademicYearStudent[]
+  AttendanceStudent AttendanceStudent[]
+  AcademicYear      AcademicYear        @relation(fields: [academicYearId], references: [id])
+  Class             Class?              @relation(fields: [classId], references: [id])
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -42,23 +44,23 @@ model AcademicYear {
   semester String
   isActive Boolean @default(false)
 
-  Class               Class[]
-  AcademicYearStudent AcademicYearStudent[]
-  Attendance          Attendance[]
+  Class      Class[]
+  Attendance Attendance[]
+  Student    Student[]
 
   @@unique([year, semester])
 }
 
 model Major {
   id   Int    @id @default(autoincrement())
-  name String
+  name String @unique
 
   Class Class[]
 }
 
 model Year {
   id   Int    @id @default(autoincrement())
-  name String
+  name String @unique
 
   Class Class[]
 }
@@ -77,24 +79,13 @@ model Class {
   AcademicYear   AcademicYear    @relation(fields: [academicYearId], references: [id])
   // RuangKelas     RuangKelas?    @relation(fields: [idRuangKelas], references: [id])
   AttendanceUnit AttendanceUnit? @relation(fields: [attendanceUnitId], references: [id])
-  ClassStudent   ClassStudent[]
-  Attendance     Attendance[]
+  Student        Student[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   // @@unique([academicYearId, idRuangKelas])
   @@unique([academicYearId, majorId, yearId, name])
-}
-
-model ClassStudent {
-  classId   Int
-  studentId Int
-
-  Student Student @relation(fields: [studentId], references: [id])
-  Class   Class   @relation(fields: [classId], references: [id])
-
-  @@id([classId, studentId], name: "id")
 }
 
 // model RuangKelas {
@@ -105,15 +96,13 @@ model ClassStudent {
 
 model Attendance {
   id             Int      @id @default(autoincrement())
-  classId        Int
   date           DateTime @db.Date
   academicYearId Int
 
   AcademicYear      AcademicYear        @relation(fields: [academicYearId], references: [id])
   AttendanceStudent AttendanceStudent[]
-  Class             Class               @relation(fields: [classId], references: [id])
 
-  @@unique([classId, date])
+  @@unique([date])
 }
 
 model AttendanceStudent {
@@ -124,7 +113,7 @@ model AttendanceStudent {
   status       String    @default("Alpa")
 
   Attendance Attendance @relation(fields: [attendanceId], references: [id])
-  Student    Student    @relation(fields: [studentId], references: [id])
+  Student    Student    @relation(fields: [studentId], references: [id], onDelete: Cascade)
 
   @@unique([attendanceId, studentId], name: "presensi_siswa")
 }
@@ -138,14 +127,4 @@ model AttendanceUnit {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-}
-
-model AcademicYearStudent {
-  studentId      Int
-  academicYearId Int
-
-  AcademicYear AcademicYear @relation(fields: [academicYearId], references: [id])
-  Student      Student      @relation(fields: [studentId], references: [id])
-
-  @@id([studentId, academicYearId])
 }

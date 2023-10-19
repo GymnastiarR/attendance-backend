@@ -34,7 +34,7 @@ export const index = async ( req, res, next ) => {
                 },
                 _count: {
                     select: {
-                        ClassStudent: true
+                        Student: true
                     }
                 }
             }
@@ -63,13 +63,13 @@ export const store = async ( req, res, next ) => {
 
         if ( parseInt( attendanceUnitId ) !== 0 ) data.attendanceUnitId = parseInt( attendanceUnitId );
 
-        if ( studentsId.length > 0 ) data.ClassStudent = { create: studentsId.map( ( id ) => ( { studentId: parseInt( id ) } ) ) };
+        if ( studentsId.length > 0 ) data.Student = { connect: studentsId.map( ( studentId ) => ( { id: studentId } ) ) };
 
         const clss = await prisma.class.create( {
             data: data
         } );
 
-        res.status( 200 ).json( { status: "Kelas Berhasil Ditambahkan", data } );
+        res.status( 200 ).json( { message: "Kelas Berhasil Ditambahkan", data } );
 
     } catch ( error ) {
         next( error );
@@ -198,21 +198,11 @@ export const show = async ( req, res, next ) => {
                 id: parseInt( classId )
             },
             include: {
-                ClassStudent: {
+                Student: {
                     select: {
-                        Student: {
-                            select: {
-                                name: true, nis: true, rfid: true, id: true
-                            }
-                        }
+                        name: true, nis: true, rfid: true, id: true
                     }
                 },
-                Attendance: {
-                    select: {
-                        date: true, AttendanceStudent: true
-                    },
-                    take: 7
-                }
             }
         } );
         res.status( 200 ).json( { data: clss } );
@@ -231,18 +221,15 @@ export const removeStudent = async ( req, res, next ) => {
                 id: parseInt( classId )
             },
             data: {
-                ClassStudent: {
-                    delete: {
-                        id: {
-                            studentId: parseInt( studentId ),
-                            classId: parseInt( classId )
-                        }
+                Student: {
+                    disconnect: {
+                        id: parseInt( studentId )
                     }
                 }
             }
         } );
 
-        res.status( 200 ).json( { status: "Berhasil" } );
+        res.status( 200 ).json( { message: "Berhasil" } );
     } catch ( error ) {
         next( error );
     }

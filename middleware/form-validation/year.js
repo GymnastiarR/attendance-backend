@@ -15,4 +15,4 @@ const validate = ( req, res, next ) => {
     }
 };
 
-export default validate;
+export default validate;    

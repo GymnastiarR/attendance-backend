@@ -12,6 +12,7 @@ const prisma = new PrismaClient();
 
 export const store = async ( req, res, next ) => {
     try {
+
         const { id: academicYearId } = await prisma.academicYear.findFirst( {
             where: {
                 isActive: true
@@ -27,42 +28,27 @@ export const store = async ( req, res, next ) => {
             date = new Date( date );
         }
 
-        const classes = await prisma.class.findMany( {
+        const students = await prisma.student.findMany( {
             where: {
-                AcademicYear: {
-                    isActive: true
+                academicYearId: academicYearId
+            }
+        } );
+
+        await prisma.attendance.create( {
+            data: {
+                date: date,
+                academicYearId: academicYearId,
+                AttendanceStudent: {
+                    createMany: {
+                        data: students.map( ( student ) => {
+                            return { studentId: student.id };
+                        } )
+                    }
                 }
             }
         } );
 
-        for await ( const clas of classes ) {
-            const students = await prisma.student.findMany( {
-                where: {
-                    ClassStudent: {
-                        some: {
-                            classId: clas.id
-                        }
-                    }
-                }
-            } );
-
-            await prisma.attendance.create( {
-                data: {
-                    classId: clas.id,
-                    date: date,
-                    academicYearId: academicYearId,
-                    AttendanceStudent: {
-                        createMany: {
-                            data: students.map( ( student ) => {
-                                return { studentId: student.id };
-                            } )
-                        }
-                    }
-                }
-            } );
-        }
-
-        res.status( 200 ).json( { status: "Berhasil Menambah Presensi" } );
+        res.status( 200 ).json( { message: "Berhasil Menambah Presensi" } );
     } catch ( error ) {
         next( error );
     }
@@ -105,33 +91,16 @@ export const manualUpdateAttandance = async ( req, res, next ) => {
     try {
         const { id } = req.params;
         const { status, date } = req.body;
+
         const { id: academicYearId } = await prisma.academicYear.findFirst( {
             where: {
                 isActive: true
             }
         } );
 
-        const student = await prisma.student.findUnique( {
-            where: {
-                id: parseInt( id ),
-            },
-            select: {
-                ClassStudent: {
-                    where: {
-                        Class: {
-                            academicYearId
-                        }
-                    }
-                }
-            }
-        } );
-
         const attendance = await prisma.attendance.update( {
             where: {
-                kelas_date: {
-                    classId: student.ClassStudent[ 0 ].classId,
-                    Date: new Date( date )
-                }
+                date: new Date( date ),
             },
             data: {
                 AttendanceStudent: {
@@ -147,6 +116,7 @@ export const manualUpdateAttandance = async ( req, res, next ) => {
                 }
             }
         } );
+
         res.status( 200 ).json( { message: "Oke" } );
     } catch ( error ) {
         next( error );

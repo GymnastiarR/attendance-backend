@@ -1,4 +1,5 @@
 import { PrismaClient } from "@prisma/client";
+import CustomError from "../custom/CustomError.js";
 
 const prisma = new PrismaClient();
 
@@ -15,7 +16,7 @@ export const store = async ( req, res, next ) => {
             }
         } );
 
-        if ( isExist ) throw new Error( "Tahun Pelajaran Sudah Ada" );
+        if ( isExist ) throw new CustomError( "Tahun Pelajaran Sudah Ada", 409 );
 
         await prisma.academicYear.updateMany( {
             data: {
@@ -29,7 +30,7 @@ export const store = async ( req, res, next ) => {
             }
         } );
 
-        res.status( 200 ).json( { status: "Berhasil Menambah Tahun Pelajaran", data: academicYear } );
+        res.status( 200 ).json( { message: "Berhasil Menambah Tahun Pelajaran", data: academicYear } );
     } catch ( error ) {
         next( error );
     }
@@ -74,7 +75,7 @@ export const activateAcademicYear = async ( req, res, next ) => {
             }
         } );
 
-        res.status( 200 ).json( { status: "Berhasil Mengaktifkan Tahun Pelajaran" } );
+        res.status( 200 ).json( { message: "Berhasil Mengaktifkan Tahun Pelajaran" } );
     } catch ( error ) {
         next( error );
     }

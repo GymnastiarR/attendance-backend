@@ -27,13 +27,14 @@ export default () => {
         io.emit( 'RFID', req.params.id );
         res.status( 200 ).json( { message: 'Scanned' } );
     } );
+
     router.use( ( err, req, res, next ) => {
         if ( err instanceof CustomError ) {
             return res.status( err.statusCode ).json( { message: err.message } );
         }
 
         if ( err instanceof Prisma.PrismaClientKnownRequestError ) {
-            return res.status( 400 ).json( { message: err.message } );
+            return res.status( 409 ).json( { message: err.message } );
         }
 
         res.status( 500 ).json( { message: err.message } );

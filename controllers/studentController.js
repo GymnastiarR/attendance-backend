@@ -1,31 +1,54 @@
 import { PrismaClient } from "@prisma/client";
 import ExcelJs from "exceljs";
-import { query } from "express";
+import CustomError from "../custom/CustomError.js";
 
 const prisma = new PrismaClient();
 export const store = async ( req, res, next ) => {
     try {
-
         const { name, classId, nis, rfid } = req.body;
 
+        const { id: academicYearId } = await prisma.academicYear.findFirst( {
+            where: {
+                isActive: true
+            }
+        } );
+
+        const isExist = await prisma.student.findUnique( {
+            where: {
+                nis: nis
+            }
+        } );
+
+        if ( isExist ) throw new CustomError( "NIS Sudah Ada", 409 );
+
         let data = {
-            name, nis
+            name, nis, academicYearId: academicYearId
         };
 
-        if ( classId !== '0' ) {
-            data.ClassStudent = {
-                create: {
-                    classId
-                }
-            };
-        }
+        if ( parseInt( classId ) ) data.classId = classId;
 
         const student = await prisma.student.create( {
             data: data
         } );
 
-        res.status( 200 ).json( { status: "Siswa Berhasil Ditambahkan", data: student } );
+        res.status( 200 ).json( { message: "Siswa Berhasil Ditambahkan", data: student } );
 
+    } catch ( error ) {
+        next( error );
+    }
+};
+
+export const destroy = async ( req, res, next ) => {
+    try {
+        const { id } = req.params;
+
+        const student = await prisma.student.delete( {
+            where: {
+                id: parseInt( id )
+            }
+        } );
+
+        res.status( 200 ).json( { message: "Siswa Berhasil Dihapus" } );
     } catch ( error ) {
         next( error );
     }
@@ -70,26 +93,17 @@ export const getSiswa = async ( req, res, next ) => {
                         }
                     }
                 },
-                ClassStudent: {
-                    where: {
-                        Class: {
-                            academicYearId: academicYear
-                        }
-                    },
+                Class: {
                     select: {
-                        Class: {
+                        name: true,
+                        Year: {
                             select: {
-                                name: true,
-                                Major: {
-                                    select: {
-                                        name: true
-                                    }
-                                },
-                                Year: {
-                                    select: {
-                                        name: true
-                                    }
-                                }
+                                name: true
+                            }
+                        },
+                        Major: {
+                            select: {
+                                name: true
                             }
                         }
                     }
@@ -199,6 +213,7 @@ export const getAllSiswa = async ( req, res, next ) => {
         const { search } = req.query;
 
         let query = {};
+
         if ( search ) {
             query = {
                 OR: [
@@ -219,35 +234,20 @@ export const getAllSiswa = async ( req, res, next ) => {
 
         const students = await prisma.student.findMany( {
             where: {
-                isGraduated: false,
+                academicYearId: academicYearId,
                 ...query
             },
-            // select: {
-            //     nama: true,
-            //     nis: true,
-            //     id: true,
-            //     SiswaKelas: true
-            // }
             include: {
-                ClassStudent: {
-                    where: {
-                        Class: {
-                            academicYearId: academicYearId
-                        }
-                    },
+                Class: {
                     select: {
-                        Class: {
+                        name: true,
+                        Year: {
                             select: {
-                                Major: {
-                                    select: {
-                                        name: true
-                                    }
-                                },
-                                Year: {
-                                    select: {
-                                        name: true
-                                    }
-                                },
+                                name: true
+                            }
+                        },
+                        Major: {
+                            select: {
                                 name: true
                             }
                         }
@@ -257,6 +257,7 @@ export const getAllSiswa = async ( req, res, next ) => {
         } );
 
         res.status( 200 ).json( { data: students } );
+
     } catch ( error ) {
         next( error );
     }
@@ -266,19 +267,17 @@ export const assignSiswaToKelas = async ( req, res, next ) => {
     try {
         const { id: studentId } = req.params;
         const { classId } = req.body;
+
         const student = await prisma.student.update( {
             where: {
                 id: parseInt( studentId )
             },
             data: {
-                ClassStudent: {
-                    create: {
-                        classId: parseInt( classId )
-                    }
-                }
+                classId: parseInt( classId )
             }
         } );
-        res.status( 200 ).json( { status: "Berhasil", data: student } );
+
+        res.status( 200 ).json( { message: "Berhasil", data: student } );
     } catch ( error ) {
         next( error );
     }
@@ -318,7 +317,8 @@ export const assignRFID = async ( req, res, next ) => {
             }
         } );
 
-        if ( isExist ) throw new Error( "RFID Sudah Digunakan" );
+        if ( isExist ) throw new CustomError( "RFID Sudah Digunakan", 409 );
+
         const student = await prisma.student.update( {
             where: {
                 id: parseInt( id )
@@ -327,7 +327,7 @@ export const assignRFID = async ( req, res, next ) => {
                 rfid
             }
         } );
-        res.status( 200 ).json( { status: "Berhasil", data: student } );
+        res.status( 200 ).json( { message: "Berhasil", data: student } );
     } catch ( error ) {
         next( error );
     }
@@ -336,28 +336,9 @@ export const assignRFID = async ( req, res, next ) => {
 const getSiswaTanpaKelas = function ( academicYearId, query ) {
     return prisma.student.findMany( {
         where: {
-            isGraduated: false,
-            AND: [
-                {
-                    OR: [
-                        {
-                            ClassStudent: {
-                                none: {}
-                            }
-                        },
-                        {
-                            ClassStudent: {
-                                none: {
-                                    Class: {
-                                        academicYearId
-                                    }
-                                }
-                            }
-                        }
-                    ]
-                },
-                query
-            ]
+            academicYearId: academicYearId,
+            classId: null,
+            ...query
         },
     } );
 };

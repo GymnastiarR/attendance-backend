@@ -13,7 +13,7 @@ export const store = async ( req, res, next ) => {
             }
         } );
 
-        res.status( 200 ).json( { status: "Unit Presensi Berhasil Ditambahkan", data: attendanceUnit } );
+        res.status( 200 ).json( { message: "Unit Presensi Berhasil Ditambahkan", data: attendanceUnit } );
     } catch ( error ) {
         next( error );
     }

@@ -1,4 +1,5 @@
 import { PrismaClient } from "@prisma/client";
+import CustomError from "../custom/CustomError.js";
 
 const prisma = new PrismaClient();
 
@@ -17,13 +18,21 @@ export const store = async ( req, res, next ) => {
     try {
         const { name } = req.body;
 
+        const isExist = await prisma.major.findUnique( {
+            where: {
+                name: name
+            }
+        } );
+
+        if ( isExist ) throw new CustomError( "Jurusan Sudah Ada", 409 );
+
         const major = await prisma.major.create( {
             data: {
                 name
             }
         } );
 
-        res.status( 200 ).json( { status: "Berhasil Menambah Jurusan", data: major } );
+        res.status( 200 ).json( { message: "Berhasil Menambah Jurusan", data: major } );
     } catch ( error ) {
         console.log( error );
         next( error );
@@ -43,7 +52,7 @@ export const update = async ( req, res, next ) => {
                 name
             }
         } );
-        res.status( 200 ).json( { status: "Jurusan Berhasil Diupdate" } );
+        res.status( 200 ).json( { message: "Jurusan Berhasil Diupdate" } );
     } catch ( error ) {
         next( error );
     }
@@ -58,7 +67,7 @@ export const destroy = async ( req, res, next ) => {
                 id: parseInt( id )
             }
         } );
-        res.status( 200 ).json( { status: "Jurusan Berhasil Dihapus" } );
+        res.status( 200 ).json( { message: "Jurusan Berhasil Dihapus" } );
     } catch ( error ) {
         next( error );
     }
