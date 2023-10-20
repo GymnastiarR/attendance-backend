@@ -1,5 +1,5 @@
 import { PrismaClient } from "@prisma/client";
-import moment from "moment";
+import moment from "moment-timezone";
 import XLSX from "xlsx";
 import ExcelJs from "exceljs";
 import { PassThrough } from 'stream';
@@ -164,6 +164,8 @@ export const updateAttendance = async ( req, res, next ) => {
         const isMatch = classes.find( ( clss ) => clss.id === student.classId );
 
         if ( !isMatch ) throw new Error( "Unit Presensi Tidak Sesuai" );
+
+        moment.tz.setDefault( "Indonesia/Jakarta" );
 
         // const { token } = req.query;
         // if ( !token ) throw new Error( "Token Tidak Ditemukan" );
