@@ -54,6 +54,32 @@ export const destroy = async ( req, res, next ) => {
     }
 };
 
+export const handleExcelUpload = async ( req, res, next ) => {
+    try {
+
+        const file = req.file;
+
+        const workbook = new ExcelJs.Workbook();
+
+        await workbook.xlsx.load( file.buffer );
+
+        // workbook.worksheets[ 0 ].
+
+        // const 
+
+        workbook.worksheets[ 0 ].eachRow( { includeEmpty: false }, ( row, index ) => {
+            row.eachCell( { includeEmpty: false }, ( cell, index ) => {
+                console.log( cell.col );
+                // console.log( cell.value );
+            } );
+        } );
+
+        res.status( 200 ).json( { message: "Berhasil" } );
+    } catch ( error ) {
+        next( error );
+    }
+};
+
 export const getSiswaQuery = async ( req, res, next ) => {
     try {
         const siswa = await prisma.siswa.findMany( {

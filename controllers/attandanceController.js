@@ -79,14 +79,6 @@ export const index = async ( req, res, next ) => {
     }
 };
 
-export const backupPeriodik = async ( req, res, next ) => {
-    try {
-
-    } catch ( error ) {
-        next( error );
-    }
-};
-
 export const manualUpdateAttandance = async ( req, res, next ) => {
     try {
         const { id } = req.params;
@@ -190,7 +182,7 @@ export const updateAttendance = async ( req, res, next ) => {
             }
         } );
 
-        res.status( 200 ).json( { message: "Berhasil", data: { attendance, date } } );
+        res.status( 200 ).json( { message: "Berhasil" } );
     } catch ( error ) {
         next( error );
     }
