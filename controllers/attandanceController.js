@@ -7,12 +7,12 @@ import path from "path";
 import fs from "fs";
 import extract from "extract-zip";
 import AdmZip from "adm-zip";
+import AttendanceAutomation from "../cron.js";
 
 const prisma = new PrismaClient();
 
 export const store = async ( req, res, next ) => {
     try {
-
         const { id: academicYearId } = await prisma.academicYear.findFirst( {
             where: {
                 isActive: true
@@ -30,7 +30,13 @@ export const store = async ( req, res, next ) => {
 
         const students = await prisma.student.findMany( {
             where: {
-                academicYearId: academicYearId
+                AcademicYearStudent: {
+                    some: {
+                        AcademicYear: {
+                            isActive: true
+                        }
+                    }
+                }
             }
         } );
 
@@ -62,7 +68,7 @@ export const index = async ( req, res, next ) => {
             }
         } );
 
-        const attendance = await prisma.attendance.groupBy( {
+        const attendances = await prisma.attendance.groupBy( {
             by: [ 'date' ],
             where: {
                 academicYearId
@@ -72,8 +78,89 @@ export const index = async ( req, res, next ) => {
             }
         } );
 
-        res.status( 200 ).json( { data: attendance } );
+        const result = [];
 
+        for await ( const attendance of attendances ) {
+            const rs = await prisma.attendanceStudent.groupBy( {
+                by: [ 'status' ],
+                where: {
+                    Attendance: {
+                        date: attendance.date,
+                        AcademicYear: {
+                            isActive: true
+                        }
+                    }
+                },
+                _count: {
+                    status: true
+                }
+            } );
+            result.push( { date: attendance.date, data: rs } );
+        }
+
+        res.status( 200 ).json( { data: result } );
+
+    } catch ( error ) {
+        next( error );
+    }
+};
+
+export const destroy = async ( req, res, next ) => {
+    try {
+        const { id: academicYearId } = await prisma.academicYear.findFirst( {
+            where: {
+                isActive: true
+            }
+        } );
+
+        const date = req.params.date;
+
+        await prisma.attendance.delete( {
+            where: {
+                academic_year_date: {
+                    academicYearId: academicYearId,
+                    date: date
+                }
+            }
+        } );
+
+        res.status( 200 ).json( { message: "Presensi Berhasil Di Hapus" } );
+    } catch ( error ) {
+        next( error );
+    }
+};
+
+export const attendanceAutomationStatus = ( req, res, next ) => {
+    try {
+        const attendanceAutomation = new AttendanceAutomation();
+
+        const status = attendanceAutomation.getStatus();
+
+        res.status( 200 ).json( { status } );
+    } catch ( error ) {
+        next( error );
+    }
+};
+
+export const runAttendanceAutomation = ( req, res, next ) => {
+    try {
+        const attendanceAutomation = new AttendanceAutomation();
+
+        const status = attendanceAutomation.start();
+
+        res.status( 200 ).json( { message: "Automasi Berhasil Dijalankan" } );
+    } catch ( error ) {
+        next( error );
+    }
+};
+
+export const stopAttendanceAutomation = ( req, res, next ) => {
+    try {
+        const attendanceAutomation = new AttendanceAutomation();
+
+        const status = attendanceAutomation.stop();
+
+        res.status( 200 ).json( { message: "Automasi Berhasil Dijalankan" } );
     } catch ( error ) {
         next( error );
     }
@@ -92,7 +179,10 @@ export const manualUpdateAttandance = async ( req, res, next ) => {
 
         const attendance = await prisma.attendance.update( {
             where: {
-                date: new Date( date ),
+                academic_year_date: {
+                    academicYearId: academicYearId,
+                    date: new Date( date )
+                }
             },
             data: {
                 AttendanceStudent: {
@@ -125,13 +215,34 @@ export const updateAttendance = async ( req, res, next ) => {
 
         const { rfid, identifier } = req.query;
 
-        const student = await prisma.student.findUnique( {
+        const { id: rfidId } = await prisma.rfid.findUnique( {
             where: {
                 rfid: rfid
+            }
+        } );
+
+        const student = await prisma.student.findUnique( {
+            where: {
+                rfid: rfidId
             },
             select: {
                 id: true,
-                classId: true,
+                ClassStudent: {
+                    where: {
+                        Class: {
+                            AcademicYear: {
+                                isActive: true
+                            }
+                        }
+                    },
+                    select: {
+                        Class: {
+                            select: {
+                                id: true
+                            }
+                        }
+                    }
+                }
             }
         } );
 
@@ -153,7 +264,7 @@ export const updateAttendance = async ( req, res, next ) => {
             }
         } );
 
-        const isMatch = classes.find( ( clss ) => clss.id === student.classId );
+        const isMatch = classes.find( ( clss ) => clss.id === student.ClassStudent[ 0 ].Class.id );
 
         if ( !isMatch ) throw new Error( "Unit Presensi Tidak Sesuai" );
 
@@ -162,10 +273,12 @@ export const updateAttendance = async ( req, res, next ) => {
         // const { token } = req.query;
         // if ( !token ) throw new Error( "Token Tidak Ditemukan" );
 
-
         const attendance = await prisma.attendance.update( {
             where: {
-                date: `${moment().format( "YYYY-MM-DD" )}T00:00:00.000Z`
+                academic_year_date: {
+                    date: `${moment().format( "YYYY-MM-DD" )}T00:00:00.000Z`,
+                    academicYearId: academicYearId
+                }
             },
             data: {
                 AttendanceStudent: {
@@ -191,10 +304,20 @@ export const updateAttendance = async ( req, res, next ) => {
 export const downloadPresence = async ( req, res, next ) => {
     try {
         const { dateStart } = req.query;
+        const { id: academicYearId } = await prisma.academicYear.findFirst( {
+            where: {
+                isActive: true
+            }
+        } );
 
         const workbook = new ExcelJs.Workbook();
 
         const classes = await prisma.class.findMany( {
+            where: {
+                AcademicYear: {
+                    isActive: true
+                }
+            },
             select: {
                 id: true,
                 name: true,
@@ -243,14 +366,21 @@ export const downloadPresence = async ( req, res, next ) => {
 
             const data = await prisma.attendance.findUnique( {
                 where: {
-                    date: dateStart
+                    academic_year_date: {
+                        date: dateStart,
+                        academicYearId: academicYearId
+                    }
                 },
                 select: {
                     date: true,
                     AttendanceStudent: {
                         where: {
                             Student: {
-                                classId: clss.id
+                                ClassStudent: {
+                                    every: {
+                                        classId: clss.id
+                                    }
+                                }
                             }
                         },
                         select: {
@@ -282,56 +412,6 @@ export const downloadPresence = async ( req, res, next ) => {
                 } );
             } );
         }
-
-        // data.forEach( ( clss, index ) => {
-        //     const worksheet = workbook.addWorksheet( `${clss.Year.name} ${clss.Major.name} ${clss.name}` );
-
-        //     worksheet.properties.defaultRowHeight = 26;
-
-        //     worksheet.columns = [
-        //         { header: 'No', key: 'no', width: 10 },
-        //         { header: 'Nama', key: 'nama', width: 32 },
-        //         { header: 'Status', key: 'status', width: 10 },
-        //     ];
-
-        //     worksheet.getRow( 1 ).font = { bold: true };
-
-        //     // worksheet.getRow( 1 ).eachCell( { includeEmpty: false }, ( cell, colNumber ) => {
-        //     //     cell.fill = {
-        //     //         type: 'pattern',
-        //     //         pattern: 'solid',
-        //     //         fgColor: { argb: 'FFFF00' }, // Yellow color
-        //     //     };
-        //     // } );
-
-        //     worksheet.getCell( 'A1' ).border = {
-        //         bottom: "thin",
-        //         top: "thin",
-        //         left: "thin",
-        //         right: "thin",
-        //     };
-
-        //     worksheet.eachRow( { includeEmpty: false }, ( row, rowNumber ) => {
-        //         row.eachCell( { includeEmpty: false }, ( cell, colNumber ) => {
-        //             cell.border = {
-        //                 bottom: "thin",
-        //                 top: "thin",
-        //                 left: "thin",
-        //                 right: "thin",
-        //             };
-        //         } );
-        //     } );
-
-        //     if ( clss.Attendance.length == 0 || clss.Attendance[ 0 ].AttendanceStudent.length == 0 ) {
-        //         return;
-        //     };
-        //     const studentAndPresence = clss.Attendance[ 0 ].AttendanceStudent.map( ( item, index ) => {
-        //         return [ index + 1, item.Student.name, item.status ];
-        //     } );
-
-        //     worksheet.addRows( studentAndPresence );
-
-        // } );
 
         const buffer = await workbook.xlsx.writeBuffer();
 

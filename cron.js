@@ -1,48 +1,66 @@
-import cron from 'node-cron';
+import { CronJob } from 'cron';
 import { PrismaClient } from '@prisma/client';
 const prisma = new PrismaClient();
-const task = cron.schedule( '10 21 * * *', async () => {
+const task = new CronJob( '0 9 17 * * mon,tue,wed,thu,fri', async () => {
     try {
-        const kelas = await prisma.kelas.findMany( {
+        const { id: academicYearId } = await prisma.academicYear.findFirst( {
             where: {
-                TahunPelajaran: {
-                    isActive: true
+                isActive: true
+            }
+        } );
+
+        const students = await prisma.student.findMany( {
+            where: {
+                AcademicYearStudent: {
+                    some: {
+                        AcademicYear: {
+                            isActive: true
+                        }
+                    }
                 }
             }
         } );
 
-        for await ( const i of kelas ) {
-            const siswa = await prisma.siswa.findMany( {
-                where: {
-                    SiswaKelas: {
-                        every: {
-                            idKelas: i.id
-                        }
+        await prisma.attendance.create( {
+            data: {
+                date: new Date(),
+                academicYearId: academicYearId,
+                AttendanceStudent: {
+                    createMany: {
+                        data: students.map( ( student ) => {
+                            return { studentId: student.id };
+                        } )
                     }
                 }
-            } );
+            }
+        } );
 
-            await prisma.presensi.create( {
-                data: {
-                    idKelas: i.id,
-                    Date: new Date(),
-                    PresensiSiswa: {
-                        createMany: {
-                            data: siswa.map( ( item ) => {
-                                return { idSiswa: item.id };
-                            } )
-                        }
-                    }
-                }
-            } );
-        }
+        console.log( "Attendance Created" );
     } catch ( error ) {
         console.log( error );
     }
-    console.log( 'running a task every minute' );
-}, {
-    scheduled: true,
-    timezone: "Asia/Jakarta"
-} );
+}, null, false, 'Asia/Jakarta' );
 
-export default task;
+class Cron {
+    static isRunning = false;
+}
+
+class AttendanceAutomation {
+    start() {
+        if ( Cron.isRunning ) {
+            return "Already Run";
+        }
+        task.start();
+        Cron.isRunning = true;
+    }
+    stop() {
+        task.stop();
+        Cron.isRunning = false;
+    }
+
+    getStatus() {
+        return Cron.isRunning;
+    }
+}
+
+export default AttendanceAutomation;

@@ -4,11 +4,15 @@ const prisma = new PrismaClient();
 
 export const index = async ( req, res, next ) => {
     try {
-        const { id: academicYearId } = await prisma.academicYear.findFirst( {
+        let academicYearId = ( await prisma.academicYear.findFirst( {
             where: {
                 isActive: true
             }
-        } );
+        } ) ).id;
+
+        if ( req.query.tahunAjaran ) {
+            academicYearId = parseInt( req.query.tahunAjaran );
+        }
 
         const clss = await prisma.class.findMany( {
             where: {
@@ -34,7 +38,7 @@ export const index = async ( req, res, next ) => {
                 },
                 _count: {
                     select: {
-                        Student: true
+                        ClassStudent: true
                     }
                 }
             }
@@ -63,7 +67,7 @@ export const store = async ( req, res, next ) => {
 
         if ( parseInt( attendanceUnitId ) !== 0 ) data.attendanceUnitId = parseInt( attendanceUnitId );
 
-        if ( studentsId.length > 0 ) data.Student = { connect: studentsId.map( ( studentId ) => ( { id: studentId } ) ) };
+        if ( studentsId.length > 0 ) data.ClassStudent = { create: studentsId.map( ( studentId ) => ( { studentId: studentId } ) ) };
 
         const clss = await prisma.class.create( {
             data: data
@@ -198,11 +202,18 @@ export const show = async ( req, res, next ) => {
                 id: parseInt( classId )
             },
             include: {
-                Student: {
+                ClassStudent: {
                     select: {
-                        name: true, nis: true, rfid: true, id: true
+                        Student: {
+                            select: {
+                                name: true,
+                                nis: true,
+                                rfid: true,
+                                id: true
+                            }
+                        }
                     }
-                },
+                }
             }
         } );
         res.status( 200 ).json( { data: clss } );
@@ -221,9 +232,12 @@ export const removeStudent = async ( req, res, next ) => {
                 id: parseInt( classId )
             },
             data: {
-                Student: {
-                    disconnect: {
-                        id: parseInt( studentId )
+                ClassStudent: {
+                    delete: {
+                        class_student: {
+                            classId: parseInt( classId ),
+                            studentId: parseInt( studentId )
+                        }
                     }
                 }
             }

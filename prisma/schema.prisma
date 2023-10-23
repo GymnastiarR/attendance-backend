@@ -22,17 +22,15 @@ model User {
 }
 
 model Student {
-  id             Int     @id @default(autoincrement())
-  name           String
-  nis            String  @unique
-  rfid           String? @unique
-  isGraduated    Boolean @default(false)
-  academicYearId Int
-  classId        Int?
+  id   Int    @id @default(autoincrement())
+  name String
+  nis  String @unique
+  rfid Int?   @unique
 
-  AttendanceStudent AttendanceStudent[]
-  AcademicYear      AcademicYear        @relation(fields: [academicYearId], references: [id])
-  Class             Class?              @relation(fields: [classId], references: [id])
+  AttendanceStudent   AttendanceStudent[]
+  ClassStudent        ClassStudent[]
+  AcademicYearStudent AcademicYearStudent[]
+  Rfid                Rfid?                 @relation(fields: [rfid], references: [id])
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -44,9 +42,9 @@ model AcademicYear {
   semester String
   isActive Boolean @default(false)
 
-  Class      Class[]
-  Attendance Attendance[]
-  Student    Student[]
+  Class               Class[]
+  Attendance          Attendance[]
+  AcademicYearStudent AcademicYearStudent[]
 
   @@unique([year, semester])
 }
@@ -79,10 +77,10 @@ model Class {
   AcademicYear   AcademicYear    @relation(fields: [academicYearId], references: [id])
   // RuangKelas     RuangKelas?    @relation(fields: [idRuangKelas], references: [id])
   AttendanceUnit AttendanceUnit? @relation(fields: [attendanceUnitId], references: [id])
-  Student        Student[]
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+  ClassStudent ClassStudent[]
 
   // @@unique([academicYearId, idRuangKelas])
   @@unique([academicYearId, majorId, yearId, name])
@@ -102,7 +100,7 @@ model Attendance {
   AcademicYear      AcademicYear        @relation(fields: [academicYearId], references: [id])
   AttendanceStudent AttendanceStudent[]
 
-  @@unique([date])
+  @@unique([date, academicYearId], name: "academic_year_date")
 }
 
 model AttendanceStudent {
@@ -112,7 +110,7 @@ model AttendanceStudent {
   datePresence DateTime?
   status       String    @default("Alpa")
 
-  Attendance Attendance @relation(fields: [attendanceId], references: [id])
+  Attendance Attendance @relation(fields: [attendanceId], references: [id], onDelete: Cascade)
   Student    Student    @relation(fields: [studentId], references: [id], onDelete: Cascade)
 
   @@unique([attendanceId, studentId], name: "presensi_siswa")
@@ -127,4 +125,33 @@ model AttendanceUnit {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+model ClassStudent {
+  id        Int @id @default(autoincrement())
+  classId   Int
+  studentId Int
+
+  Class   Class   @relation(fields: [classId], references: [id])
+  Student Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([classId, studentId], name: "class_student")
+}
+
+model AcademicYearStudent {
+  id             Int @id @default(autoincrement())
+  academicYearId Int
+  studentId      Int
+
+  AcademicYear AcademicYear @relation(fields: [academicYearId], references: [id])
+  Student      Student      @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([academicYearId, studentId], name: "academic_year_student")
+}
+
+model Rfid {
+  id   Int    @id @default(autoincrement())
+  rfid String @unique
+
+  Student Student?
 }

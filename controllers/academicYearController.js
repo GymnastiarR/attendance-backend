@@ -6,7 +6,7 @@ const prisma = new PrismaClient();
 export const store = async ( req, res, next ) => {
     try {
 
-        const { year, semester } = req.body;
+        const { year, semester, duplicate } = req.body;
 
         const isExist = await prisma.academicYear.findUnique( {
             where: {
@@ -18,19 +18,42 @@ export const store = async ( req, res, next ) => {
 
         if ( isExist ) throw new CustomError( "Tahun Pelajaran Sudah Ada", 409 );
 
+        let students = [];
+
+        if ( duplicate ) {
+            students = await prisma.student.findMany( {
+                where: {
+                    AcademicYearStudent: {
+                        every: {
+                            AcademicYear: {
+                                isActive: true
+                            }
+                        }
+                    }
+                }
+            } );
+        }
+
         await prisma.academicYear.updateMany( {
             data: {
                 isActive: false
             }
         } );
 
-        const academicYear = await prisma.academicYear.create( {
+        await prisma.academicYear.create( {
             data: {
-                year, semester, isActive: true
+                year, semester, isActive: true,
+                AcademicYearStudent: {
+                    create: students.map( student => {
+                        return {
+                            studentId: student.id
+                        };
+                    } )
+                }
             }
         } );
 
-        res.status( 200 ).json( { message: "Berhasil Menambah Tahun Pelajaran", data: academicYear } );
+        res.status( 200 ).json( { message: "Berhasil Menambah Tahun Pelajaran" } );
     } catch ( error ) {
         next( error );
     }

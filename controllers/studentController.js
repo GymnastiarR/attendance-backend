@@ -19,13 +19,19 @@ export const store = async ( req, res, next ) => {
             }
         } );
 
-        if ( isExist ) throw new CustomError( "NIS Sudah Ada", 409 );
+        if ( isExist ) throw new CustomError( `Siswa Dengan NIS ${isExist.nis} Ada oleh ${isExist.name} (Mungkin Pada Angkatan Sebelumnya) Untuk Menambahkannya pada angkatana sekarang anda bisa menggunakan transfer siswa`, 409 );
 
         let data = {
-            name, nis, academicYearId: academicYearId
+            name,
+            nis,
+            AcademicYearStudent: {
+                create: {
+                    academicYearId: academicYearId
+                }
+            }
         };
 
-        if ( parseInt( classId ) ) data.classId = classId;
+        if ( parseInt( classId ) ) data.ClassStudent = { create: { classId: parseInt( classId ) } };
 
         const student = await prisma.student.create( {
             data: data
@@ -96,22 +102,22 @@ export const getSiswa = async ( req, res, next ) => {
     try {
         const { id } = req.params;
 
-        const { id: academicYear } = await prisma.academicYear.findFirst( {
-            where: {
-                isActive: true
-            }
-        } );
-
         const student = await prisma.student.findUnique( {
             where: {
                 id: parseInt( id )
             },
-
             include: {
+                Rfid: true,
                 AttendanceStudent: {
+                    where: {
+                        Attendance: {
+                            AcademicYear: {
+                                isActive: true
+                            }
+                        }
+                    },
                     select: {
                         status: true,
-                        datePresence: true,
                         Attendance: {
                             select: {
                                 date: true
@@ -119,17 +125,28 @@ export const getSiswa = async ( req, res, next ) => {
                         }
                     }
                 },
-                Class: {
-                    select: {
-                        name: true,
-                        Year: {
-                            select: {
-                                name: true
+                ClassStudent: {
+                    where: {
+                        Class: {
+                            AcademicYear: {
+                                isActive: true
                             }
-                        },
-                        Major: {
+                        }
+                    },
+                    select: {
+                        Class: {
                             select: {
-                                name: true
+                                name: true,
+                                Major: {
+                                    select: {
+                                        name: true
+                                    }
+                                },
+                                Year: {
+                                    select: {
+                                        name: true
+                                    }
+                                }
                             }
                         }
                     }
@@ -141,6 +158,11 @@ export const getSiswa = async ( req, res, next ) => {
             by: [ 'status' ],
             where: {
                 studentId: parseInt( id ),
+                Attendance: {
+                    AcademicYear: {
+                        isActive: true
+                    }
+                }
             },
             _count: {
                 status: true,
@@ -267,26 +289,45 @@ export const getAllSiswa = async ( req, res, next ) => {
 
         if ( tanpaKelas ) {
             const students = await getSiswaTanpaKelas( academicYearId, query );
+            console.log( students );
             return res.status( 200 ).json( { data: students } );
         }
 
         const students = await prisma.student.findMany( {
             where: {
-                academicYearId: academicYearId,
-                ...query
+                AcademicYearStudent: {
+                    some: {
+                        AcademicYear: {
+                            isActive: true
+                        }
+                    }
+                }
+                // // ...query
             },
             include: {
-                Class: {
-                    select: {
-                        name: true,
-                        Year: {
-                            select: {
-                                name: true
+                Rfid: true,
+                ClassStudent: {
+                    where: {
+                        Class: {
+                            AcademicYear: {
+                                isActive: true
                             }
-                        },
-                        Major: {
+                        }
+                    },
+                    select: {
+                        Class: {
                             select: {
-                                name: true
+                                name: true,
+                                Major: {
+                                    select: {
+                                        name: true
+                                    }
+                                },
+                                Year: {
+                                    select: {
+                                        name: true
+                                    }
+                                }
                             }
                         }
                     }
@@ -311,7 +352,11 @@ export const assignSiswaToKelas = async ( req, res, next ) => {
                 id: parseInt( studentId )
             },
             data: {
-                classId: parseInt( classId )
+                ClassStudent: {
+                    create: {
+                        classId: parseInt( classId )
+                    }
+                }
             }
         } );
 
@@ -347,11 +392,15 @@ export const create = async ( req, res, next ) => {
 
 export const assignRFID = async ( req, res, next ) => {
     try {
+
         const { id } = req.params;
         const { rfid } = req.body;
-        const isExist = await prisma.student.findUnique( {
+
+        const isExist = await prisma.student.findFirst( {
             where: {
-                rfid: rfid
+                Rfid: {
+                    rfid: rfid
+                }
             }
         } );
 
@@ -362,9 +411,19 @@ export const assignRFID = async ( req, res, next ) => {
                 id: parseInt( id )
             },
             data: {
-                rfid
+                Rfid: {
+                    upsert: {
+                        create: {
+                            rfid: rfid
+                        },
+                        update: {
+                            rfid: rfid
+                        }
+                    }
+                }
             }
         } );
+
         res.status( 200 ).json( { message: "Berhasil", data: student } );
     } catch ( error ) {
         next( error );
@@ -374,11 +433,67 @@ export const assignRFID = async ( req, res, next ) => {
 const getSiswaTanpaKelas = function ( academicYearId, query ) {
     return prisma.student.findMany( {
         where: {
-            academicYearId: academicYearId,
-            classId: null,
-            ...query
+            AcademicYearStudent: {
+                some: {
+                    AcademicYear: {
+                        isActive: true
+                    }
+                }
+            },
+            ClassStudent: {
+                none: {
+                    Class: {
+                        AcademicYear: {
+                            isActive: true
+                        }
+                    }
+                }
+            }
         },
     } );
+};
+
+export const duplicate = async ( req, res, next ) => {
+    try {
+        const classesId = req.body.classesId;
+
+        const { id: academicYearId } = await prisma.academicYear.findFirst( {
+            where: {
+                isActive: true
+            }
+        } );
+
+        const students = await prisma.student.findMany( {
+            where: {
+                ClassStudent: {
+                    some: {
+                        classId: {
+                            in: classesId
+                        }
+                    }
+                }
+            }
+        } );
+
+        await prisma.academicYear.update( {
+            where: {
+                id: academicYearId
+            },
+            data: {
+                AcademicYearStudent: {
+                    connectOrCreate: students.map( student => ( { studentId: student.id } ) )
+                }
+            }
+        } );
+
+        // await prisma.academicYearStudent.upsert( {
+        //     data: students.map( student => ( { studentId: student.id, academicYearId: academicYearId } ) )
+        // } );
+
+        res.status( 200 ).json( { message: "Berhasil" } );
+    } catch ( error ) {
+        next( error );
+    }
 };
 
 export const show = ( req, res ) => {

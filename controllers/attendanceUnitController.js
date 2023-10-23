@@ -56,6 +56,22 @@ export const index = async ( req, res, next ) => {
     }
 };
 
+export const destroy = async ( req, res, next ) => {
+    try {
+        const { id } = req.params;
+
+        const attendanceUnit = await prisma.attendanceUnit.delete( {
+            where: {
+                id: parseInt( id )
+            }
+        } );
+
+        res.status( 200 ).json( { message: "Unit Presensi Berhasil Dihapus" } );
+    } catch ( error ) {
+        next( error );
+    }
+};
+
 export const updateUnitPresensi = async ( req, res, next ) => {
 
 };
