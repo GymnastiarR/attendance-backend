@@ -12,7 +12,7 @@
     "IoT"
   ],
   "prisma": {
-    "seed": "node prisma\\seed.js"
+    "seed": "node prisma/seed.js"
   },
   "author": "Gymnastiar",
   "license": "ISC",
