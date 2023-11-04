@@ -7,9 +7,12 @@ import year from './year.js';
 import attendance from './attendance.js';
 import student from './student.js';
 import attendanceUnit from './attendanceUnit.js';
-import { Prisma } from '@prisma/client';
+import canteen from './canteen.js';
+import login from './login.js';
 import CustomError from '../custom/CustomError.js';
 import Socket from '../socket.js';
+import { Prisma } from '@prisma/client';
+import { Authorization } from '../middleware/auth.js';
 
 const router = express.Router();
 
@@ -20,8 +23,10 @@ export default () => {
     router.use( '/ruang-kelas', ruangKelas );
     router.use( '/tingkat', year );
     router.use( '/presensi', attendance );
-    router.use( '/siswa', student );
+    router.use( '/siswa', Authorization( 'admin' ), student );
     router.use( '/unit-presensi', attendanceUnit );
+    router.use( '/kantin', canteen );
+    router.use( '/login', login );
     router.get( '/rfid/:id', ( req, res, next ) => {
         const io = Socket.getSocket();
         io.emit( 'RFID', req.params.id );

@@ -470,6 +470,13 @@ export const duplicate = async ( req, res, next ) => {
                         classId: {
                             in: classesId
                         }
+                    },
+                    none: {
+                        Class: {
+                            AcademicYear: {
+                                isActive: true
+                            }
+                        }
                     }
                 }
             }
@@ -481,14 +488,14 @@ export const duplicate = async ( req, res, next ) => {
             },
             data: {
                 AcademicYearStudent: {
-                    connectOrCreate: students.map( student => ( { studentId: student.id } ) )
+                    create: students.map( student => {
+                        return {
+                            studentId: student.id
+                        };
+                    } )
                 }
             }
         } );
-
-        // await prisma.academicYearStudent.upsert( {
-        //     data: students.map( student => ( { studentId: student.id, academicYearId: academicYearId } ) )
-        // } );
 
         res.status( 200 ).json( { message: "Berhasil" } );
     } catch ( error ) {
