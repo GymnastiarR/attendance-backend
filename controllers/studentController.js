@@ -60,6 +60,38 @@ export const destroy = async ( req, res, next ) => {
     }
 };
 
+export const update = async ( req, res, next ) => {
+    try {
+        const { id } = req.params;
+
+        const { name, nis } = req.body;
+
+        const student = await prisma.student.findUnique( {
+            where: {
+                nis: nis
+            }
+        } );
+
+        if ( student && student.id != id ) throw new CustomError( `Siswa Dengan NIS ${nis} Sudah Ada`, 409 );
+
+        await prisma.student.update( {
+            where: {
+                id: parseInt( id )
+            },
+            data: {
+                name,
+                nis
+            }
+        } );
+
+        res.status( 200 ).json( { message: "Berhasil" } );
+
+        // const student = await prisma.student.update( {})
+    } catch ( error ) {
+        next( error );
+    }
+};
+
 export const handleExcelUpload = async ( req, res, next ) => {
     try {
 
@@ -302,7 +334,6 @@ export const getAllSiswa = async ( req, res, next ) => {
                         }
                     }
                 }
-                // // ...query
             },
             include: {
                 Rfid: true,
@@ -450,6 +481,9 @@ const getSiswaTanpaKelas = function ( academicYearId, query ) {
                 }
             }
         },
+        include: {
+            Rfid: true,
+        }
     } );
 };
 

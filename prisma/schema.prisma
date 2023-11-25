@@ -16,9 +16,8 @@ model User {
   name     String
   password String
 
-  createdAt   DateTime      @default(now())
-  updatedAt   DateTime      @updatedAt
-  Transaction Transaction[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model Student {
@@ -150,10 +149,12 @@ model AcademicYearStudent {
 }
 
 model Rfid {
-  id   Int    @id @default(autoincrement())
-  rfid String @unique
+  id      Int    @id @default(autoincrement())
+  rfid    String @unique
+  balance Int    @default(0) @db.UnsignedInt
 
-  Student Student?
+  Student     Student?
+  Transaction Transaction[]
 }
 
 model Store {
@@ -162,16 +163,20 @@ model Store {
 
   Menu        Menu[]
   Transaction Transaction[]
+
+  deleted Boolean @default(false)
 }
 
 model Menu {
-  id      Int     @id @default(autoincrement())
+  id      Int    @id @default(autoincrement())
   name    String
   storeId Int
-  Price   Price[]
 
   Store             Store               @relation(fields: [storeId], references: [id])
   DetailTransaction DetailTransaction[]
+  Price             Price[]
+
+  deleted Boolean @default(false)
 }
 
 model Price {
@@ -179,19 +184,21 @@ model Price {
   menuId Int
   price  Int
 
-  Menu Menu @relation(fields: [menuId], references: [id])
+  Menu              Menu                @relation(fields: [menuId], references: [id])
+  DetailTransaction DetailTransaction[]
 }
 
 model Transaction {
   id      Int @id @default(autoincrement())
   storeId Int
+  rfidId  Int
 
-  userId Int
-  total  Int
-  date   DateTime @default(now())
+  date        DateTime @default(now())
+  isPaid      Boolean  @default(false)
+  totalAmount Int
 
   Store             Store               @relation(fields: [storeId], references: [id])
-  User              User                @relation(fields: [userId], references: [id])
+  RFID              Rfid                @relation(fields: [rfidId], references: [id])
   DetailTransaction DetailTransaction[]
 }
 
@@ -200,7 +207,10 @@ model DetailTransaction {
   transactionId Int
   menuId        Int
   qty           Int
+  priceId       Int
+  subTotal      Int
 
   Transaction Transaction @relation(fields: [transactionId], references: [id])
   Menu        Menu        @relation(fields: [menuId], references: [id])
+  Price       Price       @relation(fields: [priceId], references: [id])
 }

@@ -9,6 +9,9 @@ import student from './student.js';
 import attendanceUnit from './attendanceUnit.js';
 import canteen from './canteen.js';
 import login from './login.js';
+import transaction from './transaction.js';
+import rfid from './rfid.js';
+import dashboard from './dashboard.js';
 import CustomError from '../custom/CustomError.js';
 import Socket from '../socket.js';
 import { Prisma } from '@prisma/client';
@@ -27,11 +30,17 @@ export default () => {
     router.use( '/unit-presensi', attendanceUnit );
     router.use( '/kantin', canteen );
     router.use( '/login', login );
+    router.use( '/transaction', transaction );
+    router.use( '/dashboard', dashboard );
     router.get( '/rfid/:id', ( req, res, next ) => {
         const io = Socket.getSocket();
+
         io.emit( 'RFID', req.params.id );
+
         res.status( 200 ).json( { message: 'Scanned' } );
     } );
+
+    router.use( '/rfid', rfid );
 
     router.use( ( err, req, res, next ) => {
         if ( err instanceof CustomError ) {

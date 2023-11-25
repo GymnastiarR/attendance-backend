@@ -209,7 +209,13 @@ export const show = async ( req, res, next ) => {
                                 name: true,
                                 nis: true,
                                 rfid: true,
-                                id: true
+                                id: true,
+                                Rfid: {
+                                    select: {
+                                        id: true,
+                                        rfid: true
+                                    }
+                                }
                             }
                         }
                     }

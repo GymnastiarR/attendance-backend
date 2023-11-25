@@ -2,7 +2,6 @@ import { PrismaClient } from "@prisma/client";
 import moment from "moment-timezone";
 import XLSX from "xlsx";
 import ExcelJs from "exceljs";
-import { PassThrough } from 'stream';
 import path from "path";
 import fs from "fs";
 import extract from "extract-zip";
@@ -160,7 +159,7 @@ export const stopAttendanceAutomation = ( req, res, next ) => {
 
         const status = attendanceAutomation.stop();
 
-        res.status( 200 ).json( { message: "Automasi Berhasil Dijalankan" } );
+        res.status( 200 ).json( { message: "Automasi Berhasil Dimatikan" } );
     } catch ( error ) {
         next( error );
     }

@@ -1,6 +1,7 @@
 import express from 'express';
-import { getAllSiswa, store, assignSiswaToKelas, create, getSiswa, assignRFID, downloadPresence, destroy, handleExcelUpload, duplicate } from '../controllers/studentController.js';
+import { getAllSiswa, store, assignSiswaToKelas, create, getSiswa, assignRFID, downloadPresence, destroy, handleExcelUpload, duplicate, update } from '../controllers/studentController.js';
 import validate from '../middleware/form-validation/siswa.js';
+import updateStudent from '../middleware/form-validation/updateStudent.js';
 import multer from 'multer';
 import { Authorization } from '../middleware/auth.js';
 
@@ -10,6 +11,7 @@ const upload = multer( { storage: storage } );
 
 router.get( '/create', create );
 router.post( '/', validate, store );
+router.put( '/:id', updateStudent, update );
 
 router.get( '/', getAllSiswa );
 router.get( '/:id', getSiswa );
