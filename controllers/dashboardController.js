@@ -26,6 +26,8 @@ export const invoke = async ( req, res, next ) => {
             },
         } );
 
+        if ( !attendance ) throw new Error( 'Presensi tidak ditemukan' );
+
         const attendanceStatus = await prisma.attendanceStudent.groupBy( {
             by: [ 'status' ],
             where: {
