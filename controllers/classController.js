@@ -200,7 +200,7 @@ export const show = async ( req, res, next ) => {
     try {
         const { id: classId } = req.params;
 
-        moment.tz.setDefault( "Indonesia/Jakarta" );
+        moment.tz.setDefault( "Asia/Jakarta" );
 
         const attendance = await prisma.attendance.findFirst( {
             where: {
@@ -301,7 +301,7 @@ export const removeStudent = async ( req, res, next ) => {
 
 export const downloadAttendance = async ( req, res, next ) => {
     try {
-        moment.tz.setDefault( "Indonesia/Jakarta" );
+        moment.tz.setDefault( "Asia/Jakarta" );
 
         const defaultDate = moment().format( "YYYY-MM-DD" );
 

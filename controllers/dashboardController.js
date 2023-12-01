@@ -18,7 +18,7 @@ export const invoke = async ( req, res, next ) => {
             }
         } );
 
-        moment.tz.setDefault( "Indonesia/Jakarta" );
+        moment.tz.setDefault( "Asia/Jakarta" );
 
         const attendance = await prisma.attendance.findFirst( {
             where: {

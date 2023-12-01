@@ -1,7 +1,7 @@
 import { CronJob } from 'cron';
 import { PrismaClient } from '@prisma/client';
 const prisma = new PrismaClient();
-const task = new CronJob( '0 9 17 * * mon,tue,wed,thu,fri', async () => {
+const task = new CronJob( '0 0 2 * * mon,tue,wed,thu,fri', async () => {
     try {
         const { id: academicYearId } = await prisma.academicYear.findFirst( {
             where: {
