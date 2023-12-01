@@ -489,7 +489,7 @@ const getSiswaTanpaKelas = function ( academicYearId, query ) {
 
 export const duplicate = async ( req, res, next ) => {
     try {
-        const classesId = req.body.classesId;
+        const { studentsId } = req.body;
 
         const { id: academicYearId } = await prisma.academicYear.findFirst( {
             where: {
@@ -497,38 +497,13 @@ export const duplicate = async ( req, res, next ) => {
             }
         } );
 
-        const students = await prisma.student.findMany( {
-            where: {
-                ClassStudent: {
-                    some: {
-                        classId: {
-                            in: classesId
-                        }
-                    },
-                    none: {
-                        Class: {
-                            AcademicYear: {
-                                isActive: true
-                            }
-                        }
-                    }
-                }
-            }
-        } );
-
-        await prisma.academicYear.update( {
-            where: {
-                id: academicYearId
-            },
-            data: {
-                AcademicYearStudent: {
-                    create: students.map( student => {
-                        return {
-                            studentId: student.id
-                        };
-                    } )
-                }
-            }
+        await prisma.academicYearStudent.createMany( {
+            data: studentsId.map( id => {
+                return {
+                    studentId: parseInt( id ),
+                    academicYearId: academicYearId
+                };
+            } )
         } );
 
         res.status( 200 ).json( { message: "Berhasil" } );

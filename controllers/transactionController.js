@@ -8,14 +8,15 @@ export const buy = async ( req, res, next ) => {
         const { rfid } = req.body;
         const { canteenId } = req.params;
 
-        const { id: rfidId, balance } = await prisma.rfid.findUnique( {
+        const detailedRfid = await prisma.rfid.findUnique( {
             where: {
                 rfid: rfid
             }
         } );
 
-        if ( !rfidId ) throw new Error( "RFID tidak ditemukan" );
+        if ( !detailedRfid ) throw new Error( "RFID tidak ditemukan" );
 
+        const { id: rfidId, balance } = detailedRfid;
 
         const store = await prisma.store.findUnique( {
             where: {
@@ -81,7 +82,7 @@ export const buy = async ( req, res, next ) => {
             } ),
             prisma.transaction.create( {
                 data: {
-                    storeId: 1,
+                    storeId: parseInt( canteenId ),
                     totalAmount,
                     DetailTransaction: {
                         create: detailedTransactions

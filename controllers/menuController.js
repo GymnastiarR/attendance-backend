@@ -1,29 +1,40 @@
 import { PrismaClient } from "@prisma/client";
 
-const prisma = new PrismaClient().$extends( {
-    model: {
-        menu: {
-            async findMany( { model, operation, args, query } ) {
+const prisma = new PrismaClient();
 
-                args.where = { ...args.where, deleted: false };
+// .$extends( {
+//     model: {
+//         menu: {
+//             async findMany( { model, operation, args, query } ) {
 
-                console.log( args );
+//                 args.where = { ...args.where, deleted: false };
 
-                return query( args );
-            },
-        }
-    }
-} );
+//                 return query( args );
+//             },
+//         }
+//     }
+// } );
+
 export const store = async ( req, res, next ) => {
     try {
         const { storeId } = req.params;
         const { name, price } = req.body;
 
-        await prisma.menu.create( {
+        await prisma.store.update( {
+            where: {
+                id: parseInt( storeId )
+            },
             data: {
-                name: name,
-                price: price,
-                storeId: storeId
+                Menu: {
+                    create: {
+                        name: name,
+                        Price: {
+                            create: {
+                                price: parseInt( price )
+                            }
+                        }
+                    }
+                }
             }
         } );
 

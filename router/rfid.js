@@ -1,8 +1,9 @@
 import express from 'express';
-import { addBalance } from '../controllers/rfidController.js';
+import { addBalance, checkBalance } from '../controllers/rfidController.js';
 
 const router = express.Router();
 
-router.put( '/:id', addBalance );
+router.put( '/:rfid', addBalance );
+router.get( '/:rfid/balance', checkBalance );
 
 export default router;

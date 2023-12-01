@@ -1,4 +1,6 @@
 import { PrismaClient } from "@prisma/client";
+import moment from "moment-timezone";
+import ExcelJs from "exceljs";
 
 const prisma = new PrismaClient();
 
@@ -197,6 +199,15 @@ export const downloadPresensiKelas = async ( req, res, next ) => {
 export const show = async ( req, res, next ) => {
     try {
         const { id: classId } = req.params;
+
+        moment.tz.setDefault( "Indonesia/Jakarta" );
+
+        const attendance = await prisma.attendance.findFirst( {
+            where: {
+                date: `${moment().format( "YYYY-MM-DD" )}T00:00:00.000Z`
+            },
+        } );
+
         const clss = await prisma.class.findUnique( {
             where: {
                 id: parseInt( classId )
@@ -215,14 +226,47 @@ export const show = async ( req, res, next ) => {
                                         id: true,
                                         rfid: true
                                     }
+                                },
+                                AttendanceStudent: {
+                                    where: {
+                                        Attendance: {
+                                            date: `${moment().format( "YYYY-MM-DD" )}T00:00:00.000Z`
+                                        }
+                                    }
                                 }
                             }
                         }
                     }
+                },
+                Major: {
+                    select: {
+                        name: true
+                    }
+                },
+                Year: {
+                    select: {
+                        name: true
+                    }
                 }
             }
         } );
-        res.status( 200 ).json( { data: clss } );
+
+        const attendanceStatus = await prisma.attendanceStudent.groupBy( {
+            by: [ 'status' ],
+            where: {
+                Attendance: {
+                    date: `${moment().format( "YYYY-MM-DD" )}T00:00:00.000Z`
+                },
+                studentId: {
+                    in: clss.ClassStudent.map( student => student.Student.id )
+                }
+            },
+            _count: {
+                status: true
+            }
+        } );
+
+        res.status( 200 ).json( { data: { ...clss, attendanceStatus } } );
     } catch ( error ) {
         next( error );
     }
@@ -250,6 +294,117 @@ export const removeStudent = async ( req, res, next ) => {
         } );
 
         res.status( 200 ).json( { message: "Berhasil" } );
+    } catch ( error ) {
+        next( error );
+    }
+};
+
+export const downloadAttendance = async ( req, res, next ) => {
+    try {
+        moment.tz.setDefault( "Indonesia/Jakarta" );
+
+        const defaultDate = moment().format( "YYYY-MM-DD" );
+
+        const { dateStart = defaultDate, dateEnd = defaultDate } = req.query;
+        const { classId } = req.params;
+
+        const workbook = new ExcelJs.Workbook();
+
+        const attendances = await prisma.attendance.findMany( {
+            where: {
+                date: {
+                    gte: new Date( dateStart ),
+                    lte: new Date( dateEnd )
+                }
+            },
+            select: {
+                date: true,
+                AttendanceStudent: {
+                    where: {
+                        Student: {
+                            ClassStudent: {
+                                some: {
+                                    classId: parseInt( classId )
+                                }
+                            }
+                        }
+                    },
+                    select: {
+                        status: true,
+                        Student: {
+                            select: {
+                                name: true,
+                                nis: true
+                            }
+                        }
+                    },
+                    orderBy: {
+                        Student: {
+                            name: 'asc'
+                        }
+                    }
+                }
+            }
+        } );
+
+        attendances.forEach( attendance => {
+            const worksheet = workbook.addWorksheet( `${moment( attendance.date ).format( 'YYYY-MM-DD' )}` );
+
+            worksheet.properties.defaultRowHeight = 26;
+
+            worksheet.columns = [
+                { header: 'No', key: 'no', width: 10, },
+                { header: 'Nama', key: 'nama', width: 32 },
+                { header: 'Status', key: 'status', width: 10 },
+            ];
+
+            worksheet.getRow( 1 ).font = { bold: true };
+
+            worksheet.getColumn( 'A' ).alignment = { horizontal: 'center' };
+            worksheet.getRow( 1 ).eachCell( { includeEmpty: false }, ( cell, colNumber ) => {
+                cell.fill = {
+                    type: 'pattern',
+                    pattern: 'solid',
+                    fgColor: { argb: 'FFFF00' }, // Yellow color
+                };
+            } );
+
+            worksheet.getCell( 'A1' ).border = {
+                bottom: "thin",
+                top: "thin",
+                left: "thin",
+                right: "thin",
+            };
+
+            const studentAndPresence = attendance.AttendanceStudent.map( ( item, index ) => {
+                return [ index + 1, item.Student.name, item.status ];
+            } );
+
+            worksheet.addRows( studentAndPresence );
+
+            worksheet.eachRow( { includeEmpty: false }, ( row, rowNumber ) => {
+                row.eachCell( { includeEmpty: false }, ( cell, colNumber ) => {
+                    cell.border = {
+                        bottom: { style: 'thin' },
+                        top: { style: 'thin' },
+                        left: { style: 'thin' },
+                        right: { style: 'thin' },
+                    };
+                } );
+            } );
+        } );
+
+        const buffer = await workbook.xlsx.writeBuffer();
+
+        const fileName = ( dateStart === dateEnd ? new Date( dateStart ).toLocaleDateString() : `${new Date( dateStart ).toLocaleDateString()}-${new Date( dateEnd ).toLocaleDateString()}` );
+
+        res.set( {
+            'Content-Type': 'application/octet-stream',
+            'Content-Disposition': `attachment; filename="${fileName}.xlsx"`,
+            'Content-Length': buffer.length,
+        } );
+
+        res.send( buffer );
     } catch ( error ) {
         next( error );
     }

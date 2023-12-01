@@ -26,7 +26,7 @@ export default () => {
     router.use( '/ruang-kelas', ruangKelas );
     router.use( '/tingkat', year );
     router.use( '/presensi', attendance );
-    router.use( '/siswa', Authorization( 'admin' ), student );
+    router.use( '/siswa', student );
     router.use( '/unit-presensi', attendanceUnit );
     router.use( '/kantin', canteen );
     router.use( '/login', login );

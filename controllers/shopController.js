@@ -1,4 +1,5 @@
 import { PrismaClient } from "@prisma/client";
+import CustomError from "../custom/CustomError.js";
 
 const prisma = new PrismaClient();
 
@@ -159,9 +160,19 @@ export const getMenus = async ( req, res, next ) => {
     try {
         const { storeId } = req.params;
 
+        const detailedStore = await prisma.store.findUnique( {
+            where: {
+                id: parseInt( storeId ),
+                deleted: false
+            }
+        } );
+
+        if ( !detailedStore ) throw new CustomError( 'Toko tidak ditemukan', 404 );
+
         const menus = await prisma.menu.findMany( {
             where: {
-                storeId: parseInt( storeId )
+                storeId: parseInt( storeId ),
+                deleted: false
             }
         } );
 
