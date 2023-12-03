@@ -7,6 +7,7 @@ import fs from "fs";
 import extract from "extract-zip";
 import AdmZip from "adm-zip";
 import AttendanceAutomation from "../cron.js";
+import CustomError from "../custom/CustomError.js";
 
 const prisma = new PrismaClient();
 
@@ -18,14 +19,7 @@ export const store = async ( req, res, next ) => {
             }
         } );
 
-        let date = req.body.date;
-
-        if ( !date ) {
-            date = new Date();
-        }
-        else {
-            date = new Date( date );
-        }
+        const date = req.body.date ? new Date( req.body.date ) : new Date();
 
         const students = await prisma.student.findMany( {
             where: {
@@ -38,6 +32,14 @@ export const store = async ( req, res, next ) => {
                 }
             }
         } );
+
+        const attendance = prisma.attendance.findUnique( {
+            where: {
+                date: date,
+            }
+        } );
+
+        if ( attendance ) throw new CustomError( "Presensi Dengan Tanggal Yang Sama Sudah Dibuat", 409 );
 
         await prisma.attendance.create( {
             data: {
@@ -399,7 +401,6 @@ export const downloadPresence = async ( req, res, next ) => {
             } );
 
             worksheet.addRows( studentAndPresence );
-
             worksheet.eachRow( { includeEmpty: false }, ( row, rowNumber ) => {
                 row.eachCell( { includeEmpty: false }, ( cell, colNumber ) => {
                     cell.border = {
@@ -438,8 +439,6 @@ export const downloadPresensi = async ( req, res, next ) => {
         const date = await prisma.presensi.groupBy( {
             by: 'Date',
         } );
-
-        console.log( date );
 
         const data = await prisma.presensi.findMany( {
             include: {

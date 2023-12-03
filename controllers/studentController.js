@@ -321,7 +321,6 @@ export const getAllSiswa = async ( req, res, next ) => {
 
         if ( tanpaKelas ) {
             const students = await getSiswaTanpaKelas( academicYearId, query );
-            console.log( students );
             return res.status( 200 ).json( { data: students } );
         }
 
@@ -333,7 +332,8 @@ export const getAllSiswa = async ( req, res, next ) => {
                             isActive: true
                         }
                     }
-                }
+                },
+                ...query
             },
             include: {
                 Rfid: true,
