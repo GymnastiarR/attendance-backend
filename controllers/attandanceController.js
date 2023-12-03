@@ -33,7 +33,7 @@ export const store = async ( req, res, next ) => {
             }
         } );
 
-        const attendance = prisma.attendance.findUnique( {
+        const attendance = await prisma.attendance.findFirst( {
             where: {
                 date: date,
             }
