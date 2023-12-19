@@ -63,12 +63,6 @@ async function main() {
         await prisma.store.create( {
             data: {
                 name: "Gymnas's Store",
-                Menu: {
-                    create: [
-                        { name: "Ayam Geprek", Price: { create: { price: 16000 } } },
-                        { name: "Ayam Goreng", Price: { create: { price: 17000 } } },
-                    ]
-                }
             }
         } );
 

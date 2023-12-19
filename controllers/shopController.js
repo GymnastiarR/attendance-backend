@@ -8,13 +8,6 @@ export const index = async ( req, res, next ) => {
         const stores = await prisma.store.findMany( {
             where: {
                 deleted: false
-            },
-            include: {
-                _count: {
-                    select: {
-                        Menu: true
-                    }
-                }
             }
         } );
 
@@ -22,6 +15,7 @@ export const index = async ( req, res, next ) => {
             message: "Berhasil mendapatkan semua toko",
             data: stores
         } );
+
     } catch ( error ) {
         next( error );
     }
@@ -29,26 +23,11 @@ export const index = async ( req, res, next ) => {
 
 export const store = async ( req, res, next ) => {
     try {
-        const { name, menus } = req.body;
-
-        const preparedMenus = menus.map( menu => {
-            return ( {
-                name: menu.name,
-                Price: {
-                    create: {
-                        price: parseInt( menu.price )
-
-                    }
-                }
-            } );
-        } );
+        const { name } = req.body;
 
         await prisma.store.create( {
             data: {
                 name: name,
-                Menu: {
-                    create: preparedMenus
-                }
             }
         } );
 
@@ -68,21 +47,6 @@ export const show = async ( req, res, next ) => {
                 id: parseInt( id )
             },
             include: {
-                Menu: {
-                    select: {
-                        id: true,
-                        name: true,
-                        Price: {
-                            take: 1,
-                            orderBy: {
-                                id: "desc"
-                            }
-                        }
-                    },
-                    where: {
-                        deleted: false
-                    }
-                },
                 Transaction: true
             }
         } );
@@ -103,7 +67,6 @@ export const show = async ( req, res, next ) => {
             message: "Berhasil mendapatkan toko",
             data: { ...shop, sum: sum }
         } );
-
     } catch ( error ) {
         next( error );
     }
@@ -151,35 +114,6 @@ export const withdrawal = async ( req, res, next ) => {
         } );
 
         res.status( 200 ).json( { message: "Berhasil mencairkan" } );
-    } catch ( error ) {
-        next( error );
-    }
-};
-
-export const getMenus = async ( req, res, next ) => {
-    try {
-        const { storeId } = req.params;
-
-        const detailedStore = await prisma.store.findUnique( {
-            where: {
-                id: parseInt( storeId ),
-                deleted: false
-            }
-        } );
-
-        if ( !detailedStore ) throw new CustomError( 'Toko tidak ditemukan', 404 );
-
-        const menus = await prisma.menu.findMany( {
-            where: {
-                storeId: parseInt( storeId ),
-                deleted: false
-            }
-        } );
-
-        res.status( 200 ).json( {
-            message: "Berhasil mendapatkan menu",
-            data: menus
-        } );
     } catch ( error ) {
         next( error );
     }

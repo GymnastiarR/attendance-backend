@@ -161,31 +161,9 @@ model Store {
   id   Int    @id @default(autoincrement())
   name String
 
-  Menu        Menu[]
   Transaction Transaction[]
 
   deleted Boolean @default(false)
-}
-
-model Menu {
-  id      Int    @id @default(autoincrement())
-  name    String
-  storeId Int
-
-  Store             Store               @relation(fields: [storeId], references: [id])
-  DetailTransaction DetailTransaction[]
-  Price             Price[]
-
-  deleted Boolean @default(false)
-}
-
-model Price {
-  id     Int @id @default(autoincrement())
-  menuId Int
-  price  Int
-
-  Menu              Menu                @relation(fields: [menuId], references: [id])
-  DetailTransaction DetailTransaction[]
 }
 
 model Transaction {
@@ -197,20 +175,6 @@ model Transaction {
   isPaid      Boolean  @default(false)
   totalAmount Int
 
-  Store             Store               @relation(fields: [storeId], references: [id])
-  RFID              Rfid                @relation(fields: [rfidId], references: [id])
-  DetailTransaction DetailTransaction[]
-}
-
-model DetailTransaction {
-  id            Int @id @default(autoincrement())
-  transactionId Int
-  menuId        Int
-  qty           Int
-  priceId       Int
-  subTotal      Int
-
-  Transaction Transaction @relation(fields: [transactionId], references: [id])
-  Menu        Menu        @relation(fields: [menuId], references: [id])
-  Price       Price       @relation(fields: [priceId], references: [id])
+  Store Store @relation(fields: [storeId], references: [id])
+  RFID  Rfid  @relation(fields: [rfidId], references: [id])
 }
