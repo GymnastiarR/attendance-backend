@@ -24,7 +24,7 @@ jobs:
           key: ${{ secrets.PRIVATE_KEY }}
           port: 22
           script: |
-            cd ~/apps/attendance/attendance-backend
+            cd ~/apps/attendance-backend
             git pull origin master
             git status
             export NVM_DIR=~/.nvm
